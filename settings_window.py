@@ -486,12 +486,22 @@ class SettingsWindow(tk.Toplevel):
                                user_config.DEFAULT_VOLUME_STEPS.get(word, 5)))
 
             words = user_config.get_command_words()
+            loaded = 0
             for key, entry in self._cmd_entries.items():
+                val = words.get(key, user_config.DEFAULT_COMMAND_WORDS.get(key, ""))
+                entry.config(state="normal")
                 entry.delete(0, "end")
-                entry.insert(0, words.get(key,
-                             user_config.DEFAULT_COMMAND_WORDS.get(key, "")))
+                entry.insert(0, val)
+                entry.xview_moveto(0)
+                if val:
+                    loaded += 1
 
             self._reload_context_list()
+            # Debug: show how many command entries were populated
+            self._flash(
+                f"✓  Loaded {loaded}/{len(self._cmd_entries)} command words"
+                f"  |  conf={self._conf_spin.get()}%"
+                f"  cooldown={self._cooldown_spin.get()}s", GRN)
         except Exception as exc:
             import traceback
             self._flash(f"⚠ Settings load error: {exc}", RED)
