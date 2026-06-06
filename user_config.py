@@ -116,6 +116,16 @@ def set_model_path(path: str) -> None:
     save(data)
 
 
+def get_close_delay() -> int:
+    return int(load().get("CLOSE_DELAY", 5))
+
+
+def set_close_delay(seconds: int) -> None:
+    data = load()
+    data["CLOSE_DELAY"] = max(1, int(seconds))
+    save(data)
+
+
 def add_entry(name: str, path: str, proc: str) -> None:
     data = load()
     data["APPS"][name]       = path
