@@ -130,11 +130,21 @@ def config_path() -> pathlib.Path:
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
+def _auto_detect_model() -> str:
+    """Return the bare folder name of the first vosk-model* folder found next
+    to the exe/script, or the default name if nothing is found yet."""
+    base = _exe_dir()
+    for p in base.iterdir():
+        if p.is_dir() and p.name.startswith("vosk-model"):
+            return p.name
+    return DEFAULT_MODEL_FOLDER
+
+
 def _schema_defaults() -> dict:
     return {
         "APPS":       DEFAULT_APPS,
         "PROC_NAMES": DEFAULT_PROC_NAMES,
-        "MODEL_PATH": DEFAULT_MODEL_FOLDER,   # bare folder name — resolved at runtime
+        "MODEL_PATH": _auto_detect_model(),   # bare folder name — resolved at runtime
     }
 
 
