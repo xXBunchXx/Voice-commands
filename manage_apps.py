@@ -419,6 +419,14 @@ class AppManagerWindow(tk.Toplevel):
         self.preview.pack(fill="x", pady=(0, 8))
         self.combo.bind("<<ComboboxSelected>>", self._on_select)
 
+        # Rename row
+        rename_row = tk.Frame(del_card, bg=CARD)
+        rename_row.pack(fill="x", pady=(0, 8))
+        lbl(rename_row, "Rename voice command to:").pack(side="left")
+        self.e_rename = inp(rename_row, width=20)
+        self.e_rename.pack(side="left", padx=(8, 8))
+        btn(rename_row, "Rename", self._on_rename, color=ACC).pack(side="left")
+
         btn(del_card, "Delete Selected", self._on_delete, color=RED).pack(anchor="e")
 
         # Status bar
