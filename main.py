@@ -354,9 +354,6 @@ def main():
     _log_queue.put(f"Config     : {user_config.config_path()}\n")
     _log_queue.put(f"Apps       : {', '.join(user_config.get_apps().keys())}\n\n")
 
-    # Trigger model download check after mainloop starts (500ms delay)
-    root.after(500, lambda: _start_model_download(root, model_var, path_lbl, GRN, RED))
-
     # Silent background update check
     def _bg_check():
         latest = _fetch_latest_version()
