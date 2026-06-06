@@ -308,7 +308,7 @@ class SettingsWindow(tk.Toplevel):
 
     def _save_commands(self):
         try:
-            words = {k: v.get().strip().lower() for k, v in self._cmd_vars.items()}
+            words = {k: e.get().strip().lower() for k, e in self._cmd_entries.items()}
             # Warn about empty fields
             empty = [k for k, w in words.items() if not w]
             if empty:
