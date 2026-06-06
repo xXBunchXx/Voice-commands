@@ -216,7 +216,9 @@ def set_close_delay(seconds: int) -> None:
 
 def get_command_words() -> dict[str, str]:
     stored = load().get("COMMAND_WORDS", {})
-    return {**DEFAULT_COMMAND_WORDS, **stored}
+    # Ignore any blank/empty stored values so defaults always show for unset keys
+    non_empty = {k: v for k, v in stored.items() if v and v.strip()}
+    return {**DEFAULT_COMMAND_WORDS, **non_empty}
 
 def set_command_words(words: dict[str, str]) -> None:
     data = load()
