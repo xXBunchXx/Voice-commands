@@ -738,9 +738,6 @@ _restart_requested = False
 def run(stop_event: _threading.Event | None = None) -> bool:
     """Start the voice engine.  Returns True if a restart was requested."""
     global APPS, PROC_NAMES, MODEL_PATH, _stop_event, _restart_requested
-
-    # Reload config fresh every time so newly set model paths / app entries work
-    global APPS, PROC_NAMES, MODEL_PATH, _stop_event, _restart_requested
     global CONFIDENCE_THRESHOLD, COOLDOWN, _COMMAND_WORDS, _VOLUME_STEPS
     _cfg                 = user_config.load()
     MODEL_PATH           = user_config.get_model_path()
