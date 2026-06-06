@@ -641,7 +641,7 @@ def build_grammar() -> str:
         _cw("skip"), _cw("previous"), _cw("rewind"),
         _cw("play_pause"), "play",          # always keep "play" as alias
         _cw("open"), _cw("minimise"), _cw("close"),
-        _cw("minimise_all"), _cw("open_all"),
+        f"{_cw('minimise')} all", f"{_cw('open')} all",
         _cw("maximise"),
         _cw("mute"),
         _cw("diagnose"),
