@@ -122,10 +122,11 @@ def _get_volume_interface() -> POINTER(IAudioEndpointVolume):
 
 
 def change_volume(direction: str, step_word: str) -> None:
-    delta = VOLUME_STEPS.get(step_word)
-    if delta is None:
+    pct = _VOLUME_STEPS.get(step_word)
+    if pct is None:
         print(f"  Unknown step '{step_word}'")
         return
+    delta = pct / 100.0
     if direction == "down":
         delta = -delta
     vol = _get_volume_interface()
@@ -133,7 +134,7 @@ def change_volume(direction: str, step_word: str) -> None:
     new_level = max(0.0, min(1.0, current + delta))
     vol.SetMasterVolumeLevelScalar(new_level, None)
     arrow = "🔊▲" if delta > 0 else "🔉▼"
-    print(f"{arrow}  Volume {'up' if delta > 0 else 'down'} {abs(delta)*100:.0f}%"
+    print(f"{arrow}  Volume {'up' if delta > 0 else 'down'} {abs(pct)}%"
           f" → {new_level*100:.0f}%")
 
 
