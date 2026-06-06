@@ -572,13 +572,11 @@ def handle_command(text: str) -> None:
         keyboard.send("enter")
     elif text == "close voice commands":
         print("🛑  Closing voice commands!")
-        sys.exit(0)
+        _stop_event.set()
     elif text == "restart voice commands":
         print("🔄  Restarting voice commands!")
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        _restart_requested = True
+        _stop_event.set()
     elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
         change_volume(words[1], words[2])
     elif text == "mute":
