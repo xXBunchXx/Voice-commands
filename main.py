@@ -383,7 +383,7 @@ def main():
     b_upd  = mkbtn(btns, "🔄  Check for Updates",
                    lambda: _check_updates_ui(root, status_var), color=MUTED)
 
-    for b in (b_start, b_stop, b_apps, b_upd):
+    for b in (b_start, b_stop, b_apps, b_cfg, b_upd):
         b.pack(pady=3, fill="x")
 
     # Model path row
