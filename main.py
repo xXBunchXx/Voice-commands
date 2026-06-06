@@ -148,7 +148,7 @@ def _build_window() -> tk.Tk:
     hdr.pack(fill="x")
     tk.Label(hdr, text="🎙  Voice Commands", bg=ACC, fg="#ffffff",
              font=("Segoe UI Semibold", 14)).pack()
-    tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#ffffffaa",
+    tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#c8b8ff",
              font=("Segoe UI", 9)).pack()
 
     # ── Status card ───────────────────────────────────────────────────────────
