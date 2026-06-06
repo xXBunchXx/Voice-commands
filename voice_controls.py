@@ -203,6 +203,7 @@ def toggle_mute() -> None:
     new_state = not vol.GetMute()
     vol.SetMute(int(new_state), None)
     print("🔇  Muted!" if new_state else "🔊  Unmuted!")
+    _status("Muted" if new_state else "Unmuted")
 
 
 def _get_work_area() -> tuple[int, int, int, int]:
