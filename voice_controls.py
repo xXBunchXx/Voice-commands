@@ -790,37 +790,47 @@ def handle_command(text: str) -> None:
 
     if text == _cw("skip"):
         print("⏭  Skipping track!")
+        _status("Skipping track")
         keyboard.send("next track")
     elif text == _cw("previous"):
         print("⏮  Previous track!")
+        _status("Previous track")
         keyboard.send("previous track")
     elif text == _cw("rewind"):
         print("🔁  Restarting track!")
+        _status("Restarting track")
         keyboard.send("previous track")
         time.sleep(0.05)
         keyboard.send("previous track")
     elif text in (_cw("play_pause"), "play"):
         print("⏸  Toggling playback!")
+        _status("Play / Pause")
         keyboard.send("play/pause media")
     elif text == _cw("copy"):
         print("📋  Copy!")
+        _status("Copy")
         keyboard.send("ctrl+c")
     elif text == _cw("paste"):
         print("📋  Paste!")
+        _status("Paste")
         keyboard.send("ctrl+v")
     elif text == _cw("save"):
         print("💾  Save!")
+        _status("Save")
         keyboard.send("ctrl+s")
     elif text == _cw("enter"):
         print("↵  Enter!")
+        _status("Enter")
         keyboard.send("enter")
     elif text == _cw("undo"):
         undo_close()
     elif text == _cw("stop_engine"):
         print("🛑  Closing voice commands!")
+        _status("Stopping voice commands")
         _stop_event.set()
     elif text == _cw("restart_engine"):
         print("🔄  Restarting voice commands!")
+        _status("Restarting voice commands")
         _restart_requested = True
         _stop_event.set()
     elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
@@ -828,6 +838,7 @@ def handle_command(text: str) -> None:
     elif text == _cw("mute"):
         toggle_mute()
     elif text == _cw("diagnose"):
+        _status("Running diagnostic")
         print_diagnostic()
     elif words[0] == _cw("move"):
         if len(words) < 2:
