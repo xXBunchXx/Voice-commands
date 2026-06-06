@@ -455,6 +455,14 @@ def main():
              bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
         fill="x", padx=16, pady=(6, 8))
 
+    # Auto-download model if missing (blocks until done, shows progress window)
+    _download_model_if_missing()
+
+    # Refresh model path label after potential download
+    new_path = user_config.get_model_path()
+    model_var.set(new_path)
+    path_lbl.config(fg=GRN if pathlib.Path(new_path).is_dir() else RED)
+
     # Log startup info immediately
     _log_queue.put(f"Voice Commands v{VERSION} started\n")
     _log_queue.put(f"Model path : {user_config.get_model_path()}\n")
