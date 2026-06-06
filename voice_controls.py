@@ -644,46 +644,46 @@ def handle_command(text: str) -> None:
 
     print(f"Command: '{text}'")
 
-    if text == "skip":
+    if text == _cw("skip"):
         print("⏭  Skipping track!")
         keyboard.send("next track")
-    elif text == "restart":
+    elif text == _cw("previous"):
         print("⏮  Previous track!")
         keyboard.send("previous track")
-    elif text == "rewind":
+    elif text == _cw("rewind"):
         print("🔁  Restarting track!")
         keyboard.send("previous track")
         time.sleep(0.05)
         keyboard.send("previous track")
-    elif text in ("pause", "play"):
+    elif text in (_cw("play_pause"), "play"):
         print("⏸  Toggling playback!")
         keyboard.send("play/pause media")
-    elif text == "copy":
+    elif text == _cw("copy"):
         print("📋  Copy!")
         keyboard.send("ctrl+c")
-    elif text == "paste":
+    elif text == _cw("paste"):
         print("📋  Paste!")
         keyboard.send("ctrl+v")
-    elif text == "save":
+    elif text == _cw("save"):
         print("💾  Save!")
         keyboard.send("ctrl+s")
-    elif text == "enter":
+    elif text == _cw("enter"):
         print("↵  Enter!")
         keyboard.send("enter")
-    elif text == "undo":
+    elif text == _cw("undo"):
         undo_close()
-    elif text == "close voice commands":
+    elif text == _cw("stop_engine"):
         print("🛑  Closing voice commands!")
         _stop_event.set()
-    elif text == "restart voice commands":
+    elif text == _cw("restart_engine"):
         print("🔄  Restarting voice commands!")
         _restart_requested = True
         _stop_event.set()
     elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
         change_volume(words[1], words[2])
-    elif text == "mute":
+    elif text == _cw("mute"):
         toggle_mute()
-    elif text == "diagnose":
+    elif text == _cw("diagnose"):
         print_diagnostic()
     elif words[0] == "move":
         if len(words) < 2:
