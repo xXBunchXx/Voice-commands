@@ -247,6 +247,125 @@ class SettingsWindow(tk.Toplevel):
         except Exception as e:
             self._flash(f"Error: {e}", RED)
 
+    # ── Context commands tab ──────────────────────────────────────────────────
+
+    def _tab_context(self, nb):
+        frame = tk.Frame(nb, bg=BG)
+        nb.add(frame, text="🖱  Context")
+
+        _lbl(frame,
+             "These commands only fire when the right app is focused.\n"
+             "Contexts: browser · explorer · editor · any (always works)",
+             fg=MUTED, font=("Segoe UI", 8), justify="left").pack(
+            anchor="w", padx=4, pady=(8, 4))
+
+        # List frame
+        list_frame = tk.Frame(frame, bg=CARD)
+        list_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+
+        # Header row
+        hdr = tk.Frame(list_frame, bg=CARD)
+        hdr.pack(fill="x", padx=6, pady=(6, 2))
+        for text, w in [("Voice phrase", 22), ("Context", 10), ("Shortcut", 16)]:
+            _lbl(hdr, text, fg=ACC, font=("Segoe UI Semibold", 8)).pack(
+                side="left", width=w*7)
+
+        # Scrollable list
+        canvas = tk.Canvas(list_frame, bg=CARD, highlightthickness=0, height=260)
+        sb = ttk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        self._ctx_inner = tk.Frame(canvas, bg=CARD)
+        _cwin = canvas.create_window((0, 0), window=self._ctx_inner, anchor="nw")
+        self._ctx_inner.bind("<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>",
+            lambda e: canvas.itemconfig(_cwin, width=e.width))
+        canvas.bind_all("<MouseWheel>",
+            lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+
+        self._ctx_canvas = canvas
+        self._reload_context_list()
+
+        # Add / Delete row
+        bot = tk.Frame(frame, bg=BG)
+        bot.pack(fill="x", padx=4, pady=(0, 4))
+
+        tk.Button(bot, text="➕  Add Command", command=self._add_context_cmd,
+                  bg=ACC, fg="#fff", activebackground=ACC, activeforeground="#fff",
+                  relief="flat", font=("Segoe UI Semibold", 9),
+                  padx=10, pady=5, cursor="hand2").pack(side="left")
+        tk.Button(bot, text="🗑  Delete Selected", command=self._del_context_cmd,
+                  bg=RED, fg="#fff", activebackground=RED, activeforeground="#fff",
+                  relief="flat", font=("Segoe UI Semibold", 9),
+                  padx=10, pady=5, cursor="hand2").pack(side="left", padx=(8, 0))
+        tk.Button(bot, text="↺  Reset Defaults", command=self._reset_context_cmds,
+                  bg=MUTED, fg="#fff", activebackground=MUTED, activeforeground="#fff",
+                  relief="flat", font=("Segoe UI Semibold", 9),
+                  padx=10, pady=5, cursor="hand2").pack(side="right")
+
+    def _reload_context_list(self):
+        for w in self._ctx_inner.winfo_children():
+            w.destroy()
+        self._ctx_row_vars = []
+        cmds = user_config.get_context_commands()
+        for phrase, contexts in sorted(cmds.items()):
+            for context, shortcut in contexts.items():
+                var = tk.BooleanVar(value=False)
+                row = tk.Frame(self._ctx_inner, bg=CARD)
+                row.pack(fill="x", padx=4, pady=1)
+                tk.Checkbutton(row, variable=var, bg=CARD,
+                               activebackground=CARD, selectcolor=ENTRY_BG).pack(side="left")
+                tk.Label(row, text=phrase, bg=CARD, fg=FG,
+                         font=("Segoe UI", 9), width=22, anchor="w").pack(side="left")
+                ctx_color = {"browser": "#89b4fa", "explorer": "#a6e3a1",
+                             "editor": "#f9e2af", "any": "#cba6f7"}.get(context, FG)
+                tk.Label(row, text=context, bg=CARD, fg=ctx_color,
+                         font=("Segoe UI", 8), width=10, anchor="w").pack(side="left")
+                tk.Label(row, text=shortcut, bg=CARD, fg=MUTED,
+                         font=("Consolas", 8), width=16, anchor="w").pack(side="left")
+                self._ctx_row_vars.append((var, phrase, context))
+
+    def _add_context_cmd(self):
+        dlg = _ContextCmdDialog(self)
+        self.wait_window(dlg)
+        if not dlg.result:
+            return
+        phrase, context, shortcut = dlg.result
+        cmds = user_config.get_context_commands()
+        if phrase not in cmds:
+            cmds[phrase] = {}
+        cmds[phrase][context] = shortcut
+        user_config.set_context_commands(cmds)
+        self._reload_context_list()
+        self._flash(f'✓  Added "{phrase}" [{context}] → {shortcut}')
+
+    def _del_context_cmd(self):
+        to_delete = [(p, c) for v, p, c in self._ctx_row_vars if v.get()]
+        if not to_delete:
+            self._flash("Select rows to delete first.", GRN)
+            return
+        cmds = user_config.get_context_commands()
+        for phrase, context in to_delete:
+            if phrase in cmds and context in cmds[phrase]:
+                del cmds[phrase][context]
+                if not cmds[phrase]:
+                    del cmds[phrase]
+        user_config.set_context_commands(cmds)
+        self._reload_context_list()
+        self._flash(f"✓  Deleted {len(to_delete)} rule(s).")
+
+    def _reset_context_cmds(self):
+        from tkinter import messagebox
+        if messagebox.askyesno("Reset?",
+                               "Reset context commands to defaults?\n"
+                               "Your custom additions will be lost.",
+                               parent=self):
+            user_config.set_context_commands({})
+            self._reload_context_list()
+            self._flash("✓  Reset to defaults.")
+
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _make_save_btn(self, parent, cmd):
