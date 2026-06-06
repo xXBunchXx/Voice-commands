@@ -105,7 +105,9 @@ def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
     def _download():
         try:
             root.after(0, lambda: status_var.set("Downloading update…"))
-            urllib.request.urlretrieve(GITHUB_EXE_URL, new_exe)
+            with _urlopen(GITHUB_EXE_URL, timeout=60) as resp:
+                data = resp.read()
+            new_exe.write_bytes(data)
             bat = exe_path.with_name("_vc_updater.bat")
             bat.write_text(
                 f'@echo off\ntimeout /t 2 /nobreak >nul\n'
