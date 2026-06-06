@@ -498,11 +498,6 @@ class SettingsWindow(tk.Toplevel):
                     loaded += 1
 
             self._reload_context_list()
-            # Debug: show how many command entries were populated
-            self._flash(
-                f"✓  Loaded {loaded}/{len(self._cmd_entries)} command words"
-                f"  |  conf={self._conf_spin.get()}%"
-                f"  cooldown={self._cooldown_spin.get()}s", GRN)
         except Exception as exc:
             import traceback
             self._flash(f"⚠ Settings load error: {exc}", RED)
