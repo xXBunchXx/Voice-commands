@@ -53,6 +53,19 @@ def _cw(key: str) -> str:
     return _COMMAND_WORDS.get(key, user_config.DEFAULT_COMMAND_WORDS.get(key, key))
 
 
+# ── Status overlay callback ───────────────────────────────────────────────
+# Set by main.py after engine reload so the overlay can show what's happening.
+_status_cb = None
+
+def _status(msg: str) -> None:
+    """Push a status message to the overlay. No-op if overlay not connected."""
+    if _status_cb:
+        try:
+            _status_cb(msg)
+        except Exception:
+            pass
+
+
 def _get_active_proc() -> str:
     """Return the exe name (lowercase) of the current foreground window's process."""
     hwnd = win32gui.GetForegroundWindow()
