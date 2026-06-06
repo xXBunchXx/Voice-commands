@@ -877,6 +877,7 @@ def handle_command(text: str) -> None:
             if words[1] == "all":
                 keyboard.send("windows+d")
                 print("🗕  Minimised all windows!")
+                _status("Minimise all windows")
             else:
                 app, _ = _parse_app(words, 1)
                 minimise_app(app) if app else minimise_app()
