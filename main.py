@@ -4,11 +4,12 @@ VoiceCommands — main launcher.
 import os
 import sys
 import pathlib
+import queue
 import subprocess
 import ssl
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, scrolledtext
 import urllib.request
 
 import user_config
@@ -18,16 +19,46 @@ VERSION = "1.0.0"
 GITHUB_RAW     = "https://raw.githubusercontent.com/xXBunchXx/voice-commands/master/"
 GITHUB_EXE_URL = "https://github.com/xXBunchXx/voice-commands/releases/latest/download/VoiceCommands.exe"
 
+# ── Log queue — voice engine writes here, UI reads it ─────────────────────────
+
+_log_queue: queue.Queue = queue.Queue()
+
+
+class _QueueWriter:
+    """Replaces sys.stdout so print() in voice_controls shows in the debug panel."""
+    def __init__(self, q: queue.Queue, original):
+        self._q        = q
+        self._original = original   # keep original so we can still write to console
+
+    def write(self, text: str):
+        if text.strip():
+            self._q.put(text)
+        if self._original:
+            try:
+                self._original.write(text)
+            except Exception:
+                pass
+
+    def flush(self):
+        if self._original:
+            try:
+                self._original.flush()
+            except Exception:
+                pass
+
+    def reconfigure(self, **kw):          # called by voice_controls at import
+        if self._original and hasattr(self._original, "reconfigure"):
+            self._original.reconfigure(**kw)
+
+
 # ── SSL context (PyInstaller doesn't bundle certs) ────────────────────────────
 
 def _ssl_ctx():
-    """Return an SSL context that works both frozen and in dev."""
     ctx = ssl.create_default_context()
     try:
         import certifi
         ctx = ssl.create_default_context(cafile=certifi.where())
     except ImportError:
-        # certifi not available — disable verification as a fallback
         ctx.check_hostname = False
         ctx.verify_mode    = ssl.CERT_NONE
     return ctx
@@ -44,7 +75,7 @@ def _fetch_latest_version() -> str | None:
         with _urlopen(GITHUB_RAW + "version.txt") as r:
             return r.read().decode().strip()
     except Exception as e:
-        print(f"Update check error: {e}")
+        _log_queue.put(f"Update check error: {e}\n")
         return None
 
 
@@ -71,7 +102,8 @@ def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
                              creationflags=subprocess.CREATE_NO_WINDOW)
             root.after(0, root.destroy)
         except Exception as e:
-            root.after(0, lambda: messagebox.showerror("Update failed", str(e), parent=root))
+            root.after(0, lambda: messagebox.showerror(
+                "Update failed", str(e), parent=root))
             root.after(0, lambda: status_var.set("○ Stopped"))
 
     threading.Thread(target=_download, daemon=True).start()
@@ -83,17 +115,14 @@ _stop_event    = threading.Event()
 _engine_thread: threading.Thread | None = None
 
 
-def _engine_loop(stop_event: threading.Event, root: tk.Tk,
-                 status_var: tk.StringVar, b_start: tk.Button, b_stop: tk.Button):
-    """Runs in a background thread. Handles restart requests automatically."""
+def _engine_loop(stop_event, root, status_var, b_start, b_stop):
     import voice_controls
     while True:
         stop_event.clear()
         wants_restart = voice_controls.run(stop_event)
         if not wants_restart:
             break
-        print("Restarting engine…")
-    # Engine stopped — update UI from the main thread
+        _log_queue.put("🔄  Restarting engine…\n")
     root.after(0, lambda: _ui_stopped(status_var, b_start, b_stop))
 
 
@@ -103,7 +132,7 @@ def _ui_stopped(status_var, b_start, b_stop):
     b_stop.config(state="disabled")
 
 
-def _start_engine(root, status_var, b_start, b_stop, path_lbl):
+def _start_engine(root, status_var, b_start, b_stop):
     global _stop_event, _engine_thread
     if _engine_thread and _engine_thread.is_alive():
         return
@@ -118,7 +147,14 @@ def _start_engine(root, status_var, b_start, b_stop, path_lbl):
         )
         return
 
-    _stop_event = threading.Event()
+    # Redirect stdout → log queue before starting engine
+    sys.stdout = _QueueWriter(_log_queue, sys.__stdout__)
+
+    _log_queue.put(f"▶  Starting engine…\n")
+    _log_queue.put(f"   Model path : {model_path}\n")
+    _log_queue.put(f"   Apps loaded: {list(user_config.get_apps().keys())}\n\n")
+
+    _stop_event    = threading.Event()
     _engine_thread = threading.Thread(
         target=_engine_loop,
         args=(_stop_event, root, status_var, b_start, b_stop),
@@ -137,20 +173,18 @@ def _stop_engine(status_var, b_start, b_stop):
 
 # ── App Manager ────────────────────────────────────────────────────────────────
 
-def _open_manager(root: tk.Tk):
-    """Open the App Manager as a child Toplevel of the main window."""
+def _open_manager(root):
     from manage_apps import AppManagerWindow
     win = AppManagerWindow(root)
-    win.grab_set()   # make it modal
+    win.grab_set()
     win.focus_set()
 
 
-# ── Update check UI ────────────────────────────────────────────────────────────
+# ── Update UI ─────────────────────────────────────────────────────────────────
 
 def _check_updates_ui(root, status_var):
     status_var.set("Checking for updates…")
     root.update()
-
     latest = _fetch_latest_version()
     if latest is None:
         messagebox.showinfo(
@@ -160,7 +194,6 @@ def _check_updates_ui(root, status_var):
         )
         status_var.set("○ Stopped")
         return
-
     if _version_tuple(latest) > _version_tuple(VERSION):
         if messagebox.askyesno(
             "Update available",
@@ -187,11 +220,13 @@ def main():
     GRN   = "#a6e3a1"
     RED   = "#f38ba8"
     MUTED = "#585b70"
+    LOG_BG = "#11111b"
+    LOG_FG = "#cdd6f4"
 
     root = tk.Tk()
     root.title(f"Voice Commands  v{VERSION}")
     root.configure(bg=BG)
-    root.resizable(False, False)
+    root.resizable(True, True)
 
     def mkbtn(parent, text, cmd, color=ACC, state="normal", width=22):
         return tk.Button(parent, text=text, command=cmd,
@@ -201,7 +236,7 @@ def main():
                          padx=14, pady=7, cursor="hand2", bd=0,
                          state=state, width=width)
 
-    # Header
+    # ── Header ────────────────────────────────────────────────────────────────
     hdr = tk.Frame(root, bg=ACC, pady=10)
     hdr.pack(fill="x")
     tk.Label(hdr, text="🎙  Voice Commands", bg=ACC, fg="#ffffff",
@@ -209,14 +244,14 @@ def main():
     tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#c8b8ff",
              font=("Segoe UI", 9)).pack()
 
-    # Status
-    card = tk.Frame(root, bg=CARD, padx=20, pady=14)
+    # ── Status ────────────────────────────────────────────────────────────────
+    card = tk.Frame(root, bg=CARD, padx=20, pady=12)
     card.pack(fill="x", padx=16, pady=(14, 0))
     status_var = tk.StringVar(value="○ Stopped")
     tk.Label(card, textvariable=status_var, bg=CARD, fg=GRN,
              font=("Segoe UI Semibold", 13)).pack()
 
-    # Buttons (defined in two steps so lambdas can reference each other)
+    # ── Engine buttons ────────────────────────────────────────────────────────
     btns = tk.Frame(root, bg=BG, pady=4)
     btns.pack(fill="x", padx=16)
 
@@ -224,8 +259,16 @@ def main():
     b_stop  = mkbtn(btns, "■  Stop Voice Commands",
                     lambda: _stop_engine(status_var, b_start, b_stop),
                     color=MUTED, state="disabled")
+    b_start.config(command=lambda: _start_engine(root, status_var, b_start, b_stop))
 
-    # Model path row — defined before b_start.config so path_lbl exists
+    b_apps = mkbtn(btns, "⚙  Manage Apps",      lambda: _open_manager(root))
+    b_upd  = mkbtn(btns, "🔄  Check for Updates",
+                   lambda: _check_updates_ui(root, status_var), color=MUTED)
+
+    for b in (b_start, b_stop, b_apps, b_upd):
+        b.pack(pady=3, fill="x")
+
+    # ── Model path row ────────────────────────────────────────────────────────
     model_row = tk.Frame(root, bg=CARD, padx=12, pady=8)
     model_row.pack(fill="x", padx=16, pady=(10, 0))
     tk.Label(model_row, text="Vosk model path:", bg=CARD, fg=FG,
@@ -234,11 +277,11 @@ def main():
     path_row.pack(fill="x", pady=(3, 0))
 
     model_var = tk.StringVar(value=user_config.get_model_path())
-    exists     = pathlib.Path(model_var.get()).is_dir()
-    path_lbl   = tk.Label(path_row, textvariable=model_var, bg=CARD,
-                          fg=GRN if exists else RED,
-                          font=("Consolas", 8), anchor="w",
-                          wraplength=310, justify="left")
+    exists    = pathlib.Path(model_var.get()).is_dir()
+    path_lbl  = tk.Label(path_row, textvariable=model_var, bg=CARD,
+                         fg=GRN if exists else RED,
+                         font=("Consolas", 8), anchor="w",
+                         wraplength=310, justify="left")
     path_lbl.pack(side="left", fill="x", expand=True)
 
     def _pick_model():
@@ -251,23 +294,85 @@ def main():
     mkbtn(path_row, "Browse…", _pick_model, color=MUTED, width=8).pack(
         side="right", padx=(6, 0))
 
-    # Wire start button now that path_lbl exists
-    b_start.config(command=lambda: _start_engine(
-        root, status_var, b_start, b_stop, path_lbl))
+    # ── Debug panel ───────────────────────────────────────────────────────────
+    debug_frame = tk.Frame(root, bg=BG)
+    debug_frame.pack(fill="both", expand=True, padx=16, pady=(10, 0))
 
-    b_apps = mkbtn(btns, "⚙  Manage Apps", lambda: _open_manager(root))
-    b_upd  = mkbtn(btns, "🔄  Check for Updates",
-                   lambda: _check_updates_ui(root, status_var), color=MUTED)
+    debug_header = tk.Frame(debug_frame, bg=BG)
+    debug_header.pack(fill="x")
 
-    for b in (b_start, b_stop, b_apps, b_upd):
-        b.pack(pady=3, fill="x")
+    tk.Label(debug_header, text="Debug log", bg=BG, fg=MUTED,
+             font=("Segoe UI Semibold", 9)).pack(side="left")
 
-    # Footer
+    def _clear_log():
+        log_box.config(state="normal")
+        log_box.delete("1.0", "end")
+        log_box.config(state="disabled")
+
+    mkbtn(debug_header, "Clear", _clear_log, color=MUTED, width=6).pack(
+        side="right")
+
+    log_box = scrolledtext.ScrolledText(
+        debug_frame,
+        height=14, wrap="word",
+        bg=LOG_BG, fg=LOG_FG,
+        font=("Consolas", 9),
+        relief="flat", bd=0,
+        state="disabled",
+    )
+    log_box.pack(fill="both", expand=True, pady=(4, 0))
+
+    # Colour tags for different message types
+    log_box.tag_config("hear",    foreground="#89b4fa")   # blue  — hearing
+    log_box.tag_config("cmd",     foreground="#a6e3a1")   # green — command matched
+    log_box.tag_config("low",     foreground="#f9e2af")   # amber — low confidence
+    log_box.tag_config("info",    foreground="#cdd6f4")   # white — general info
+    log_box.tag_config("error",   foreground="#f38ba8")   # red   — errors
+    log_box.tag_config("muted",   foreground="#585b70")   # grey  — diagnostics
+
+    def _tag_for(text: str) -> str:
+        t = text.lower()
+        if "hearing:" in t or "👂" in t:      return "hear"
+        if "command:" in t:                    return "cmd"
+        if "low confidence" in t or "💤" in t: return "low"
+        if any(x in t for x in ("error", "failed", "traceback", "exception")):
+            return "error"
+        if any(x in t for x in ("──", "✓", "✗", "win —")):
+            return "muted"
+        return "info"
+
+    def _append_log(text: str):
+        log_box.config(state="normal")
+        tag = _tag_for(text)
+        log_box.insert("end", text.rstrip("\n") + "\n", tag)
+        log_box.see("end")
+        log_box.config(state="disabled")
+
+    # Poll the queue every 100 ms and write new lines into the log box
+    def _poll_log():
+        try:
+            while True:
+                line = _log_queue.get_nowait()
+                _append_log(line)
+        except queue.Empty:
+            pass
+        root.after(100, _poll_log)
+
+    root.after(100, _poll_log)
+
+    # ── Footer ────────────────────────────────────────────────────────────────
     tk.Label(root, text=f"Config: {user_config.config_path()}",
              bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
-        fill="x", padx=16, pady=(8, 10))
+        fill="x", padx=16, pady=(6, 8))
 
-    # Silent background update notification
+    # Log startup info immediately
+    _log_queue.put(f"Voice Commands v{VERSION} started\n")
+    _log_queue.put(f"Model path : {user_config.get_model_path()}\n")
+    _log_queue.put(f"Model found: {pathlib.Path(user_config.get_model_path()).is_dir()}\n")
+    _log_queue.put(f"Config     : {user_config.config_path()}\n")
+    _log_queue.put(f"Apps loaded: {', '.join(user_config.get_apps().keys())}\n\n")
+
+    # Silent background update check
     def _bg_check():
         latest = _fetch_latest_version()
         if latest and _version_tuple(latest) > _version_tuple(VERSION):
