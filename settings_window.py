@@ -197,7 +197,7 @@ class SettingsWindow(tk.Toplevel):
 
     def _on_conf_change(self, *_):
         try:
-            v = self._conf_var.get()
+            v = int(self._conf_spin.get())
             if v >= 80:   note = "very strict — may miss commands"
             elif v >= 60: note = "recommended"
             elif v >= 40: note = "lenient — may trigger accidentally"
@@ -208,9 +208,9 @@ class SettingsWindow(tk.Toplevel):
 
     def _save_engine(self):
         try:
-            user_config.set_confidence_threshold(self._conf_var.get() / 100.0)
-            user_config.set_cooldown(self._cooldown_var.get())
-            user_config.set_close_delay(self._delay_var.get())
+            user_config.set_confidence_threshold(int(self._conf_spin.get()) / 100.0)
+            user_config.set_cooldown(float(self._cooldown_spin.get()))
+            user_config.set_close_delay(int(self._delay_spin.get()))
             self._flash("✓  Engine settings saved — restart engine to apply.")
         except Exception as e:
             self._flash(f"Error: {e}", RED)
