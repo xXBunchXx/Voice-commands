@@ -237,6 +237,8 @@ class SettingsWindow(tk.Toplevel):
             user_config.set_confidence_threshold(int(self._conf_spin.get()) / 100.0)
             user_config.set_cooldown(float(self._cooldown_spin.get()))
             user_config.set_close_delay(int(self._delay_spin.get()))
+            user_config.set_overlay_enabled(self._overlay_enabled.get())
+            user_config.set_overlay_position(self._overlay_pos.get())
             self._flash("✓  Engine settings saved — restart engine to apply.")
         except Exception as e:
             self._flash(f"Error: {e}", RED)
