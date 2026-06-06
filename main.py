@@ -118,14 +118,28 @@ _engine_thread: threading.Thread | None = None
 
 
 def _engine_loop(stop_event, root, status_var, b_start, b_stop):
-    import voice_controls
-    while True:
-        stop_event.clear()
-        wants_restart = voice_controls.run(stop_event)
-        if not wants_restart:
-            break
-        _log_queue.put("🔄  Restarting engine…\n")
-    root.after(0, lambda: _ui_stopped(status_var, b_start, b_stop))
+    try:
+        _log_queue.put("   Importing voice engine…\n")
+        import voice_controls
+        import importlib
+        importlib.reload(voice_controls)   # reload so config changes take effect
+        _log_queue.put("   Voice engine loaded — starting loop\n\n")
+        while True:
+            stop_event.clear()
+            wants_restart = voice_controls.run(stop_event)
+            if not wants_restart:
+                break
+            _log_queue.put("🔄  Restarting engine…\n")
+    except Exception as e:
+        import traceback
+        _log_queue.put(f"\n❌  ENGINE CRASHED:\n{traceback.format_exc()}\n")
+        root.after(0, lambda: messagebox.showerror(
+            "Engine error",
+            f"The voice engine crashed:\n\n{e}\n\nCheck the debug log for details.",
+            parent=root,
+        ))
+    finally:
+        root.after(0, lambda: _ui_stopped(status_var, b_start, b_stop))
 
 
 def _ui_stopped(status_var, b_start, b_stop):
