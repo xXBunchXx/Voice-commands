@@ -1,7 +1,6 @@
 """
 VoiceCommands — main launcher.
 """
-import io
 import os
 import sys
 import pathlib
@@ -10,9 +9,8 @@ import subprocess
 import ssl
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext
 import urllib.request
-import zipfile
 
 import user_config
 
