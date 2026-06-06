@@ -26,6 +26,34 @@ def _exe_dir() -> pathlib.Path:
 # Resolved against the exe directory at runtime so it works on any machine.
 DEFAULT_MODEL_FOLDER = "vosk-model-small-en-us-0.15"
 
+# ── Customisable command words ────────────────────────────────────────────────
+DEFAULT_COMMAND_WORDS: dict[str, str] = {
+    "skip":           "skip",
+    "previous":       "restart",
+    "rewind":         "rewind",
+    "play_pause":     "pause",
+    "mute":           "mute",
+    "copy":           "copy",
+    "paste":          "paste",
+    "save":           "save",
+    "enter":          "enter",
+    "undo":           "undo",
+    "diagnose":       "diagnose",
+    "minimise_all":   "minimise all",
+    "open_all":       "open all",
+    "stop_engine":    "close voice commands",
+    "restart_engine": "restart voice commands",
+}
+
+# Volume step words → percentage (integer 1-100)
+DEFAULT_VOLUME_STEPS: dict[str, int] = {
+    "one":   2,
+    "two":   4,
+    "three": 6,
+    "four":  8,
+    "five":  10,
+}
+
 # ── Defaults (used only on very first run if no config exists) ───────────────
 DEFAULT_APPS: dict[str, str] = {
     "firefox":  r"C:\Program Files\Mozilla Firefox\firefox.exe",
