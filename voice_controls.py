@@ -441,6 +441,61 @@ def open_and_snap(app_name: str, position: str) -> None:
     snap_app(app_name, position)
 
 
+def merge_explorer_windows() -> None:
+    """Merge all open File Explorer windows into one window with tabs."""
+    try:
+        import win32com.client
+        shell = win32com.client.Dispatch("Shell.Application")
+    except Exception as e:
+        print(f"  Could not access Shell COM: {e}")
+        return
+
+    # Collect all Explorer windows + their current folder paths
+    wins = []
+    for w in shell.Windows():
+        try:
+            path = w.Document.Folder.Self.Path
+            hwnd = int(w.HWND)
+            if path and win32gui.IsWindow(hwnd):
+                wins.append({"hwnd": hwnd, "path": path})
+        except Exception:
+            continue
+
+    if not wins:
+        print("  No File Explorer windows found.")
+        return
+    if len(wins) == 1:
+        print("  Only one Explorer window open — nothing to merge.")
+        return
+
+    print(f"🗂  Merging {len(wins)} Explorer windows into tabs…")
+
+    # Bring the first window to front as the target
+    main = wins[0]
+    win32gui.ShowWindow(main["hwnd"], win32con.SW_RESTORE)
+    _set_foreground(main["hwnd"])
+    time.sleep(0.5)
+
+    for w in wins[1:]:
+        # Open a new tab in the main window
+        keyboard.send("ctrl+t")
+        time.sleep(0.4)
+        # Focus the address bar and navigate to the path
+        keyboard.send("ctrl+l")
+        time.sleep(0.25)
+        keyboard.write(w["path"])
+        keyboard.send("enter")
+        time.sleep(0.5)
+        # Close the now-redundant original window
+        try:
+            win32gui.PostMessage(w["hwnd"], win32con.WM_CLOSE, 0, 0)
+            time.sleep(0.2)
+        except Exception:
+            pass
+
+    print(f"🗂  Merged into {len(wins)} tabs!")
+
+
 def minimise_app(app_name: str | None = None) -> None:
     if app_name:
         if app_name not in APPS:
