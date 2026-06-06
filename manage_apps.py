@@ -10,6 +10,64 @@ from tkinter import ttk, messagebox, filedialog
 import user_config
 
 
+# ── Simple input dialog ───────────────────────────────────────────────────────
+
+class _SimpleDialog(tk.Toplevel):
+    """Small popup with one or two labelled Entry fields and OK/Cancel."""
+
+    def __init__(self, master, title, icon, fields, prefill=None):
+        super().__init__(master)
+        self.title(title)
+        self.configure(bg="#1e1e2e")
+        self.resizable(False, False)
+        self.result = None
+        BG = "#1e1e2e"; CARD = "#2a2a3e"; ACC = "#7c6af7"
+        FG = "#cdd6f4"; ENTRY_BG = "#313244"; MUTED = "#585b70"
+
+        tk.Label(self, text=f"{icon}  {title}", bg=BG, fg=ACC,
+                 font=("Segoe UI Semibold", 11)).pack(padx=20, pady=(14, 8))
+
+        self._entries = []
+        for i, (label, hint) in enumerate(fields):
+            f = tk.Frame(self, bg=BG)
+            f.pack(fill="x", padx=20, pady=(0, 6))
+            tk.Label(f, text=label, bg=BG, fg=FG,
+                     font=("Segoe UI", 9)).pack(anchor="w")
+            e = tk.Entry(f, width=42, bg=ENTRY_BG, fg=FG,
+                         insertbackground=FG, relief="flat",
+                         font=("Segoe UI", 10), bd=4)
+            e.pack(fill="x")
+            if prefill and i < len(prefill):
+                e.insert(0, prefill[i])
+            else:
+                tk.Label(f, text=hint, bg=BG, fg=MUTED,
+                         font=("Segoe UI", 8)).pack(anchor="w")
+            self._entries.append(e)
+
+        btn_row = tk.Frame(self, bg=BG)
+        btn_row.pack(fill="x", padx=20, pady=(4, 14))
+
+        def _ok():
+            self.result = [e.get() for e in self._entries]
+            self.destroy()
+
+        tk.Button(btn_row, text="OK", command=_ok,
+                  bg=ACC, fg="#fff", activebackground=ACC,
+                  activeforeground="#fff", relief="flat",
+                  font=("Segoe UI Semibold", 9), padx=14, pady=5,
+                  cursor="hand2").pack(side="right")
+        tk.Button(btn_row, text="Cancel", command=self.destroy,
+                  bg=MUTED, fg="#fff", activebackground=MUTED,
+                  activeforeground="#fff", relief="flat",
+                  font=("Segoe UI Semibold", 9), padx=14, pady=5,
+                  cursor="hand2").pack(side="right", padx=(0, 8))
+
+        self._entries[0].focus_set()
+        self.bind("<Return>", lambda _: _ok())
+        self.bind("<Escape>", lambda _: self.destroy())
+        self.grab_set()
+
+
 # ── Built-in Windows apps ─────────────────────────────────────────────────────
 
 _BUILTIN_APPS = [
