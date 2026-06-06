@@ -464,6 +464,7 @@ def open_or_focus(app_name: str) -> None:
     if app_name in OPEN_OVERRIDE:
         OPEN_OVERRIDE[app_name]()
         print(f"▶  Opened/focused {app_name}!")
+        _status(f"Opening {app_name}")
         return
     path = APPS[app_name]
     # URLs and folders just open — no window-focus logic needed
