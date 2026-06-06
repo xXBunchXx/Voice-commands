@@ -151,9 +151,10 @@ def _schema_defaults() -> dict:
     apps  = {**DEFAULT_APPS,       "voice commands": vc_exe}
     procs = {**DEFAULT_PROC_NAMES, "voice commands": "VoiceCommands.exe"}
     return {
-        "APPS":       apps,
-        "PROC_NAMES": procs,
-        "MODEL_PATH": _auto_detect_model(),   # bare folder name — resolved at runtime
+        "APPS":        apps,
+        "PROC_NAMES":  procs,
+        "MODEL_PATH":  _auto_detect_model(),
+        "CLOSE_DELAY": 5,   # seconds before a pending close is committed
     }
 
 
