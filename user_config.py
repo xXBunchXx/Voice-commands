@@ -28,19 +28,30 @@ DEFAULT_MODEL_FOLDER = "vosk-model-small-en-us-0.15"
 
 # ── Customisable command words ────────────────────────────────────────────────
 DEFAULT_COMMAND_WORDS: dict[str, str] = {
+    # Media
     "skip":           "skip",
     "previous":       "restart",
     "rewind":         "rewind",
     "play_pause":     "pause",
     "mute":           "mute",
+    # Keyboard
     "copy":           "copy",
     "paste":          "paste",
     "save":           "save",
     "enter":          "enter",
-    "undo":           "undo",
-    "diagnose":       "diagnose",
+    # App control prefixes
+    "open":           "open",
+    "close":          "close",
+    "minimise":       "minimise",
+    "maximise":       "maximise",
+    "move":           "move",
+    "merge":          "merge",
+    # Compound app commands
     "minimise_all":   "minimise all",
     "open_all":       "open all",
+    # Engine
+    "undo":           "undo",
+    "diagnose":       "diagnose",
     "stop_engine":    "close voice commands",
     "restart_engine": "restart voice commands",
 }
