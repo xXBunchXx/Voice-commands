@@ -815,59 +815,59 @@ def handle_command(text: str) -> None:
 
     print(f"Command: '{text}'")
 
-    if text == _cw("skip"):
+    if text in _cw_all("skip"):
         print("⏭  Skipping track!")
         _status("Skipping track")
         keyboard.send("next track")
-    elif text == _cw("previous"):
+    elif text in _cw_all("previous"):
         print("⏮  Previous track!")
         _status("Previous track")
         keyboard.send("previous track")
-    elif text == _cw("rewind"):
+    elif text in _cw_all("rewind"):
         print("🔁  Restarting track!")
         _status("Restarting track")
         keyboard.send("previous track")
         time.sleep(0.05)
         keyboard.send("previous track")
-    elif text in (_cw("play_pause"), "play"):
+    elif text in _cw_all("play_pause") or text == "play":
         print("⏸  Toggling playback!")
         _status("Play / Pause")
         keyboard.send("play/pause media")
-    elif text == _cw("copy"):
+    elif text in _cw_all("copy"):
         print("📋  Copy!")
         _status("Copy")
         keyboard.send("ctrl+c")
-    elif text == _cw("paste"):
+    elif text in _cw_all("paste"):
         print("📋  Paste!")
         _status("Paste")
         keyboard.send("ctrl+v")
-    elif text == _cw("save"):
+    elif text in _cw_all("save"):
         print("💾  Save!")
         _status("Save")
         keyboard.send("ctrl+s")
-    elif text == _cw("enter"):
+    elif text in _cw_all("enter"):
         print("↵  Enter!")
         _status("Enter")
         keyboard.send("enter")
-    elif text == _cw("undo"):
+    elif text in _cw_all("undo"):
         undo_close()
-    elif text == _cw("stop_engine"):
+    elif text in _cw_all("stop_engine"):
         print("🛑  Closing voice commands!")
         _status("Stopping voice commands")
         _stop_event.set()
-    elif text == _cw("restart_engine"):
+    elif text in _cw_all("restart_engine"):
         print("🔄  Restarting voice commands!")
         _status("Restarting voice commands")
         _restart_requested = True
         _stop_event.set()
     elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
         change_volume(words[1], words[2])
-    elif text == _cw("mute"):
+    elif text in _cw_all("mute"):
         toggle_mute()
-    elif text == _cw("diagnose"):
+    elif text in _cw_all("diagnose"):
         _status("Running diagnostic")
         print_diagnostic()
-    elif words[0] == _cw("move"):
+    elif words[0] in _cw_all("move"):
         if len(words) < 2:
             print(f"  Say '{_cw('move')}' followed by an app name and/or position")
         else:
@@ -876,7 +876,7 @@ def handle_command(text: str) -> None:
                 snap_app(app, " ".join(rest))
             else:
                 snap_app(None, " ".join(words[1:]))
-    elif words[0] == _cw("open"):
+    elif words[0] in _cw_all("open"):
         if len(words) == 1:
             print(f"  Say '{_cw('open')}' followed by an app name")
         elif words[1] == "all":
@@ -899,7 +899,7 @@ def handle_command(text: str) -> None:
                     open_or_focus(app)
             else:
                 print(f"  Don't know '{' '.join(words[1:])}'")
-    elif words[0] == _cw("minimise"):
+    elif words[0] in _cw_all("minimise"):
         if len(words) > 1:
             if words[1] == "all":
                 keyboard.send("windows+d")
@@ -910,12 +910,12 @@ def handle_command(text: str) -> None:
                 minimise_app(app) if app else minimise_app()
         else:
             minimise_app()
-    elif words[0] == _cw("maximise"):
+    elif words[0] in _cw_all("maximise"):
         app, _ = _parse_app(words, 1) if len(words) > 1 else (None, [])
         snap_app(app, "fullscreen")
-    elif words[0] == _cw("merge"):
+    elif words[0] in _cw_all("merge"):
         merge_explorer_windows()
-    elif words[0] == _cw("close"):
+    elif words[0] in _cw_all("close"):
         if len(words) > 1:
             app, _ = _parse_app(words, 1)
             close_app(app) if app else print(f"  Say '{_cw('close')}' followed by an app name")
