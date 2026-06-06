@@ -368,15 +368,29 @@ def _set_foreground(hwnd: int) -> None:
         print(f"  Warning: couldn't bring window to foreground ({e})")
 
 
+def _is_url(path: str) -> bool:
+    return path.startswith(("http://", "https://"))
+
+def _is_folder(path: str) -> bool:
+    return pathlib.Path(path).is_dir()
+
+
 def _launch(app_name: str) -> None:
     if app_name in LAUNCH_OVERRIDE:
         LAUNCH_OVERRIDE[app_name]()
     elif app_name in APPS:
-        os.startfile(APPS[app_name])
+        path = APPS[app_name]
+        if _is_url(path):
+            import webbrowser
+            webbrowser.open(path)
+        elif _is_folder(path):
+            subprocess.Popen(["explorer.exe", path])
+        else:
+            os.startfile(path)
     else:
         print(f"  Don't know how to open '{app_name}'")
         return
-    print(f"▶  Opened new {app_name}!")
+    print(f"▶  Opened {app_name}!")
 
 
 def open_or_focus(app_name: str) -> None:
@@ -386,6 +400,11 @@ def open_or_focus(app_name: str) -> None:
     if app_name in OPEN_OVERRIDE:
         OPEN_OVERRIDE[app_name]()
         print(f"▶  Opened/focused {app_name}!")
+        return
+    path = APPS[app_name]
+    # URLs and folders just open — no window-focus logic needed
+    if _is_url(path) or _is_folder(path):
+        _launch(app_name)
         return
     hwnds = _windows_for_app(app_name)
     if hwnds:
