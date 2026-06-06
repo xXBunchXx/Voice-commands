@@ -549,6 +549,7 @@ def build_grammar() -> str:
         "copy", "paste",
         "save",
         "enter",
+        "undo",
         "close voice commands",
         "restart voice commands",
         "[unk]",
