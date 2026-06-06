@@ -1,0 +1,722 @@
+import json
+import os
+import time
+import pyaudio
+import keyboard
+import psutil
+import win32gui
+import win32process
+import win32con
+import pygetwindow as gw
+import win32api
+import subprocess
+import ctypes
+import sys
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from vosk import Model, KaldiRecognizer
+
+sys.stdout.reconfigure(encoding='utf-8')
+# Make the process DPI-aware so all Win32 coordinate calls use physical pixels
+# consistently. Without this, SystemParametersInfoW, GetWindowRect and
+# SetWindowPos use virtualized logical pixels while DwmGetWindowAttribute
+# always returns physical pixels — mixing the two causes incorrect positioning.
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)  # per-monitor DPI aware
+except Exception:
+    ctypes.windll.user32.SetProcessDPIAware()        # fallback
+
+# ── CONFIG ───────────────────────────────────────────────────────────────
+MODEL_PATH = r"C:\Users\shark\Desktop\AI\Skip spotify track\vosk-model-small-en-us-0.15"
+SAMPLE_RATE = 16000
+FRAMES_PER_BUFFER = 1024
+COOLDOWN = 1.5
+CONFIDENCE_THRESHOLD = 0.65
+
+APPS = {
+    "firefox":  r"C:\Program Files\Mozilla Firefox\firefox.exe",
+    "godot":    r"steam://rungameid/17420298833333583872",
+    "steam":    r"C:\Program Files (x86)\Steam\steam.exe",
+    "files":    r"C:\Windows\explorer.exe",
+    "spotify":  r"C:\Users\shark\AppData\Roaming\Spotify\Spotify.exe",
+    "discord":  r"C:\Users\shark\AppData\Local\Discord\app-1.0.9003\Discord.exe",
+    "github":   r"C:\Users\shark\AppData\Local\GitHubDesktop\GitHubDesktop.exe",
+    "command":  r"C:\Windows\System32\cmd.exe",
+    "claude":   r"C:\Program Files\WindowsApps\Claude_1.11187.4.0_x64__pzs8sxrjxfjjc\app\claude.exe",
+    "visual studio":     r"C:\Users\shark\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+    "no mans sky": r"steam://rungameid/275850",
+    "fifa": r"steam://rungameid/3405690",
+    "settings": r"ms-settings:",
+    "zomboid": r"steam://rungameid/108600",
+    "ark": r"steam://rungameid/2399830",
+    "rimworld": r"steam://rungameid/294100",
+}
+
+# Exe name as shown in Task Manager → Details (lowercase).
+# Prefix wildcards ending in * match any exe starting with that string —
+# so "godot*" matches godot.exe, godot_v4.6.3-stable_win64.exe, etc.
+# No need to update this when Godot updates.
+PROC_NAMES = {
+    "firefox": "firefox.exe",
+    "godot":   "godot*",         # matches any Godot version automatically
+    "steam":   "steam.exe",
+    "files":   "explorer.exe",
+    "spotify": "spotify.exe",
+    "discord": "discord.exe",
+    "github":  "githubdesktop.exe",
+    "command": "cmd.exe",
+    "visual studio": "code.exe",
+    "claude":  "claude.exe",
+    "no mans sky": "NMS.exe",
+    "fifa": "FC26.exe",
+    "settings": "ms-settings:",
+    "zomboid": "ProjectZomboid64.exe",
+    "ark": "ArkAscended.exe",
+    "rimworld": "RimWorldWin64.exe",
+}
+
+# Window classes to exclude per app.
+# IME / Default IME are Windows system Input Method Editor windows —
+# every thread creates one; they are never the app's main UI.
+# vguiPopupWindow IS Steam's UI class so must not be excluded.
+EXCLUDE_CLASSES: dict[str, set[str]] = {
+    "files": {"Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"},
+    "steam": {"IME"},
+}
+
+# System window classes that should never be treated as an app's main window.
+# Applied globally across all apps in addition to EXCLUDE_CLASSES.
+GLOBAL_EXCLUDE_CLASSES: set[str] = {"IME", "Default IME"}
+
+# Apps that may hide to the system tray.
+INCLUDE_HIDDEN: set[str] = {"steam", "discord"}
+
+# When an app has many windows, prefer the one whose title contains this.
+PREFERRED_TITLE: dict[str, str] = {
+    "discord": "discord",
+}
+
+# "open X" runs this instead of window detection.
+OPEN_OVERRIDE = {
+    "steam": lambda: os.startfile("steam://open/main"),
+}
+
+# Special launch for new instances.
+LAUNCH_OVERRIDE = {
+    "files":   lambda: subprocess.Popen(["explorer.exe"]),
+    "command": lambda: subprocess.Popen(
+        ["cmd.exe"], creationflags=subprocess.CREATE_NEW_CONSOLE
+    ),
+}
+
+# Custom close commands.
+CLOSE_OVERRIDE = {
+    "steam": lambda: subprocess.Popen([APPS["steam"], "-shutdown"]),
+}
+
+# Apps where minimise works by focusing the window via OPEN_OVERRIDE and then
+# sending Win+Down. Used when the visible window can't be found by process/class
+# (e.g. Steam's CEF-based UI lives in a window our search can't reliably locate).
+MINIMISE_VIA_FOCUS: set[str] = {"steam"}
+
+# "one" → 2%, "two" → 4%, ... "five" → 10%
+VOLUME_STEPS: dict[str, float] = {
+    "one":   0.02,
+    "two":   0.04,
+    "three": 0.06,
+    "four":  0.08,
+    "five":  0.10,
+}
+
+# Snap positions — used to build the grammar and validate commands.
+# Positions are calculated at runtime from actual work area dimensions
+# using SetWindowPos directly, bypassing Snap Assist entirely.
+SNAP_POSITIONS: set[str] = {
+    "left", "right", "fullscreen",
+    "top left", "top right",
+    "bottom left", "bottom right",
+}
+# ─────────────────────────────────────────────────────────────────────────
+
+# ── VOLUME CONTROL ───────────────────────────────────────────────────────
+def _get_volume_interface() -> POINTER(IAudioEndpointVolume):
+    device = AudioUtilities.GetSpeakers()
+    com_device = getattr(device, "_dev", device)
+    interface = com_device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    return cast(interface, POINTER(IAudioEndpointVolume))
+
+
+def change_volume(direction: str, step_word: str) -> None:
+    delta = VOLUME_STEPS.get(step_word)
+    if delta is None:
+        print(f"  Unknown step '{step_word}'")
+        return
+    if direction == "down":
+        delta = -delta
+    vol = _get_volume_interface()
+    current = vol.GetMasterVolumeLevelScalar()
+    new_level = max(0.0, min(1.0, current + delta))
+    vol.SetMasterVolumeLevelScalar(new_level, None)
+    arrow = "🔊▲" if delta > 0 else "🔉▼"
+    print(f"{arrow}  Volume {'up' if delta > 0 else 'down'} {abs(delta)*100:.0f}%"
+          f" → {new_level*100:.0f}%")
+
+
+# REMOVE this:
+def set_mute(muted: bool) -> None:
+    vol = _get_volume_interface()
+    vol.SetMute(int(muted), None)
+    print("🔇  Muted!" if muted else "🔊  Unmuted!")
+
+# REPLACE with:
+def toggle_mute() -> None:
+    vol = _get_volume_interface()
+    new_state = not vol.GetMute()
+    vol.SetMute(int(new_state), None)
+    print("🔇  Muted!" if new_state else "🔊  Unmuted!")
+
+
+def _get_work_area() -> tuple[int, int, int, int]:
+    """Return (x, y, w, h) of the primary monitor's work area (excludes taskbar)."""
+    r = ctypes.wintypes.RECT()
+    ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(r), 0)
+    return r.left, r.top, r.right - r.left, r.bottom - r.top
+
+
+def _get_frame_offsets(hwnd: int) -> tuple[int, int, int, int]:
+    """Return the invisible shadow/frame offsets (left, top, right, bottom).
+    Windows includes these in GetWindowRect but they're not visible — we must
+    compensate so snap targets have no gaps between them."""
+    full    = ctypes.wintypes.RECT()
+    visible = ctypes.wintypes.RECT()
+    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(full))
+    # DWMWA_EXTENDED_FRAME_BOUNDS (9) gives the visible rendered bounds
+    ctypes.windll.dwmapi.DwmGetWindowAttribute(
+        hwnd, 9, ctypes.byref(visible), ctypes.sizeof(visible)
+    )
+    return (
+        visible.left  - full.left,
+        visible.top   - full.top,
+        full.right    - visible.right,
+        full.bottom   - visible.bottom,
+    )
+
+
+def _set_corner_pref(hwnd: int, square: bool) -> None:
+    """Tell DWM to use square (True) or default rounded (False) corners.
+    Windows only does this automatically for its own snap — we must ask."""
+    # DWMWA_WINDOW_CORNER_PREFERENCE = 33
+    # DWMWCP_DEFAULT = 0  (rounded on Win11), DWMWCP_DONOTROUND = 1
+    val = ctypes.c_int(1 if square else 0)
+    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+        hwnd, 33, ctypes.byref(val), ctypes.sizeof(val)
+    )
+
+
+def _apply_snap(hwnd: int, position: str) -> None:
+    """Move and resize hwnd to a snap position.
+    Compensates for invisible frame shadow so windows tile flush with no gaps,
+    and squares the corners to match native snap behaviour."""
+    wx, wy, ww, wh = _get_work_area()
+    hw, hh = ww // 2, wh // 2
+
+    coords: dict[str, tuple[int, int, int, int]] = {
+        "left":         (wx,       wy,       hw,  wh),
+        "right":        (wx + hw,  wy,       hw,  wh),
+        "top left":     (wx,       wy,       hw,  hh),
+        "top right":    (wx + hw,  wy,       hw,  hh),
+        "bottom left":  (wx,       wy + hh,  hw,  hh),
+        "bottom right": (wx + hw,  wy + hh,  hw,  hh),
+    }
+
+    # Restore from maximised so SetWindowPos takes effect
+    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+    time.sleep(0.05)
+
+    if position == "fullscreen":
+        _set_corner_pref(hwnd, square=False)    # restore rounded corners
+        win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+    elif position in coords:
+        x, y, w, h = coords[position]
+        fl, ft, fr, fb = _get_frame_offsets(hwnd)
+        _set_corner_pref(hwnd, square=True)
+        win32gui.SetWindowPos(
+            hwnd, win32con.HWND_TOP,
+            x - fl, y - ft, w + fl + fr, h + ft + fb,
+            win32con.SWP_SHOWWINDOW | win32con.SWP_NOZORDER,
+        )
+
+
+def snap_app(app_name: str | None, position: str) -> None:
+    """Snap an app (or the current foreground window) to a screen position."""
+    if position not in SNAP_POSITIONS:
+        print(f"  Unknown position '{position}'")
+        return
+
+    if app_name is None:
+        # Snap whatever is currently in focus
+        hwnd = win32gui.GetForegroundWindow()
+    elif app_name not in APPS:
+        print(f"  Don't know '{app_name}'")
+        return
+    elif app_name in OPEN_OVERRIDE:
+        # Bring the app forward via its URI/override, then grab the foreground hwnd
+        OPEN_OVERRIDE[app_name]()
+        time.sleep(0.6)
+        hwnd = win32gui.GetForegroundWindow()
+    else:
+        hwnds = _windows_for_app(app_name)
+        if not hwnds:
+            print(f"  Couldn't find a window for '{app_name}'")
+            return
+        hwnd = _pick_window(hwnds, app_name)
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        _set_foreground(hwnd)
+        time.sleep(0.15)
+
+    _apply_snap(hwnd, position)
+    label = app_name or "current window"
+    print(f"🗗  Snapped {label} to {position}!")
+# ─────────────────────────────────────────────────────────────────────────
+
+# ── PROCESS CACHE ────────────────────────────────────────────────────────
+_pid_name_cache: dict[int, str] = {}
+_cache_built_at: float = 0.0
+_CACHE_TTL = 5.0
+
+
+def _refresh_pid_cache() -> None:
+    global _pid_name_cache, _cache_built_at
+    _pid_name_cache = {
+        p.pid: p.info["name"].lower()
+        for p in psutil.process_iter(["name"])
+        if p.info["name"]
+    }
+    _cache_built_at = time.monotonic()
+
+
+def _proc_matches(cached_name: str, pattern: str) -> bool:
+    """Match a process name against a pattern.
+    Patterns ending in * are prefix matches; otherwise exact match."""
+    pattern = pattern.lower()
+    if pattern.endswith("*"):
+        return cached_name.startswith(pattern[:-1])
+    return cached_name == pattern
+
+
+def _is_taskbar_window(hwnd: int) -> bool:
+    ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+    if ex_style & win32con.WS_EX_TOOLWINDOW:
+        return False
+    if ex_style & win32con.WS_EX_APPWINDOW:
+        return True
+    return win32gui.GetWindow(hwnd, win32con.GW_OWNER) == 0
+
+
+def _window_score(hwnd: int) -> int:
+    visible = win32gui.IsWindowVisible(hwnd)
+    iconic  = win32gui.IsIconic(hwnd)
+    taskbar = _is_taskbar_window(hwnd)
+    if visible and not iconic and taskbar:
+        return 3
+    if visible and not iconic:
+        return 2
+    if taskbar:
+        return 1
+    return 0
+
+
+def _windows_for_app(app_name: str) -> list[int]:
+    pattern = PROC_NAMES.get(app_name, "")
+    if not pattern:
+        return []
+    if time.monotonic() - _cache_built_at > _CACHE_TTL:
+        _refresh_pid_cache()
+
+    excluded     = EXCLUDE_CLASSES.get(app_name, set()) | GLOBAL_EXCLUDE_CLASSES
+    allow_hidden = app_name in INCLUDE_HIDDEN
+    found = []
+
+    def _cb(hwnd, _):
+        if not allow_hidden and not win32gui.IsWindowVisible(hwnd):
+            return
+        if not win32gui.GetWindowText(hwnd):
+            return
+        if win32gui.GetClassName(hwnd) in excluded:
+            return
+        try:
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            proc_name = _pid_name_cache.get(pid, "")
+            if proc_name and _proc_matches(proc_name, pattern):
+                found.append(hwnd)
+        except OSError:
+            pass
+
+    win32gui.EnumWindows(_cb, None)
+    found.sort(key=_window_score, reverse=True)
+    return found
+
+
+def _pick_window(hwnds: list[int], app_name: str) -> int:
+    pref = PREFERRED_TITLE.get(app_name, "").lower()
+    if pref:
+        for h in hwnds:
+            if win32gui.IsWindowVisible(h) and pref in win32gui.GetWindowText(h).lower():
+                return h
+        for h in hwnds:
+            if pref in win32gui.GetWindowText(h).lower():
+                return h
+    return hwnds[0]
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _set_foreground(hwnd: int) -> None:
+    try:
+        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32gui.SetForegroundWindow(hwnd)
+    except Exception as e:
+        print(f"  Warning: couldn't bring window to foreground ({e})")
+
+
+def _launch(app_name: str) -> None:
+    if app_name in LAUNCH_OVERRIDE:
+        LAUNCH_OVERRIDE[app_name]()
+    elif app_name in APPS:
+        os.startfile(APPS[app_name])
+    else:
+        print(f"  Don't know how to open '{app_name}'")
+        return
+    print(f"▶  Opened new {app_name}!")
+
+
+def open_or_focus(app_name: str) -> None:
+    if app_name not in APPS:
+        print(f"  Don't know how to open '{app_name}'")
+        return
+    if app_name in OPEN_OVERRIDE:
+        OPEN_OVERRIDE[app_name]()
+        print(f"▶  Opened/focused {app_name}!")
+        return
+    hwnds = _windows_for_app(app_name)
+    if hwnds:
+        hwnd = _pick_window(hwnds, app_name)
+        win32gui.ShowWindow(hwnd, 9)
+        _set_foreground(hwnd)
+        print(f"▶  Focused {app_name}!")
+        return
+    _launch(app_name)
+
+
+def open_and_snap(app_name: str, position: str) -> None:
+    """Open/focus an app and immediately snap it to a position.
+    If the app isn't running yet, waits for it to launch before snapping."""
+    if app_name not in APPS:
+        print(f"  Don't know how to open '{app_name}'")
+        return
+    if position not in SNAP_POSITIONS:
+        print(f"  Unknown position '{position}'")
+        return
+
+    needs_launch = (
+        app_name not in OPEN_OVERRIDE
+        and not _windows_for_app(app_name)
+    )
+
+    if needs_launch:
+        _launch(app_name)
+        print(f"  Waiting for {app_name} to start...")
+        time.sleep(2.5)
+
+    # snap_app handles focus + snap for both OPEN_OVERRIDE and normal apps
+    snap_app(app_name, position)
+
+
+def minimise_app(app_name: str | None = None) -> None:
+    if app_name:
+        if app_name not in APPS:
+            print(f"  Don't know '{app_name}'")
+            return
+
+        # For apps whose visible window can't be found by process/class,
+        # bring the window forward via its open handler then send Win+Down.
+        if app_name in MINIMISE_VIA_FOCUS:
+            if app_name in OPEN_OVERRIDE:
+                OPEN_OVERRIDE[app_name]()
+                time.sleep(0.6)     # let the window reach the foreground
+            keyboard.send("windows+down")
+            print(f"🗕  Minimised {app_name}!")
+            return
+
+        hwnds = _windows_for_app(app_name)
+        if hwnds:
+            hwnd = _pick_window(hwnds, app_name)
+            win32gui.ShowWindow(hwnd, 6)
+            print(f"🗕  Minimised {app_name}!")
+        else:
+            print(f"  Couldn't find a window for '{app_name}'")
+    else:
+        win = gw.getActiveWindow()
+        if win:
+            win.minimize()
+            print("🗕  Minimised current window!")
+
+
+def close_app(app_name: str) -> None:
+    if app_name not in APPS:
+        print(f"  Don't know '{app_name}'")
+        return
+    if app_name in CLOSE_OVERRIDE:
+        CLOSE_OVERRIDE[app_name]()
+        print(f"✕  Closed {app_name}!")
+        return
+    hwnds = _windows_for_app(app_name)
+    if hwnds:
+        for hwnd in hwnds:
+            win32gui.PostMessage(hwnd, 0x0010, 0, 0)
+        print(f"✕  Closed {app_name}!")
+    else:
+        print(f"  Couldn't find a window for '{app_name}'")
+
+
+# ── DIAGNOSTIC ───────────────────────────────────────────────────────────
+def print_diagnostic() -> None:
+    print("\n── Window diagnostic ───────────────────────────────────────")
+    _refresh_pid_cache()
+    all_proc_names = set(_pid_name_cache.values())
+
+    for app_name, pattern in PROC_NAMES.items():
+        running = any(_proc_matches(n, pattern) for n in all_proc_names)
+        if not running:
+            print(f"  {app_name:12s}  ✗  '{pattern}' not running")
+            similar = sorted({n for n in all_proc_names if app_name in n})
+            if similar:
+                print(f"  {'':12s}     → similar process running: {', '.join(similar)}")
+                print(f"  {'':12s}     → update PROC_NAMES[\"{app_name}\"] to match")
+            continue
+
+        hwnds = _windows_for_app(app_name)
+        if not hwnds:
+            print(f"  {app_name:12s}  ✗  process running but no windows found")
+        else:
+            best  = _pick_window(hwnds, app_name)
+            title = win32gui.GetWindowText(best)
+            cls   = win32gui.GetClassName(best)
+            score = _window_score(best)
+            print(f"  {app_name:12s}  ✓  {len(hwnds)} win — "
+                  f"best: '{title}' [{cls}] score={score}")
+
+    print("────────────────────────────────────────────────────────────\n")
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def build_grammar() -> str:
+    words = [
+        "skip", "restart", "rewind", "pause", "play",
+        "open", "minimise", "close",
+        "minimise all", "open all",
+        "maximise",
+        "mute",
+        "diagnose",
+        "copy", "paste",
+        "save",
+        "enter",
+        "close voice commands",
+        "restart voice commands",
+        "[unk]",
+    ]
+    for app_name in APPS:
+        words.append(f"open {app_name}")
+        words.append(f"open new {app_name}")
+        words.append(f"minimise {app_name}")
+        words.append(f"maximise {app_name}")
+        words.append(f"close {app_name}")
+        for pos in SNAP_POSITIONS:
+            words.append(f"move {app_name} {pos}")
+            words.append(f"open {app_name} {pos}")
+    for pos in SNAP_POSITIONS:
+        words.append(f"move {pos}")     # snap current window with no app named
+    for step in VOLUME_STEPS:
+        words.append(f"volume up {step}")
+        words.append(f"volume down {step}")
+    return json.dumps(words)
+
+
+def average_confidence(result: dict) -> float:
+    words = result.get("result", [])
+    if not words:
+        return 0.0
+    return sum(w.get("conf", 0.0) for w in words) / len(words)
+
+
+def _parse_app(words: list[str], start: int) -> tuple[str | None, list[str]]:
+    """Try to match the longest app name beginning at words[start].
+    Tries 3-word, 2-word, then 1-word candidates so 'no mans sky' is
+    matched before 'no' alone would be.
+    Returns (app_name, remaining_words) or (None, words[start:])."""
+    for length in range(min(3, len(words) - start), 0, -1):
+        candidate = " ".join(words[start : start + length])
+        if candidate in APPS:
+            return candidate, words[start + length :]
+    return None, words[start:]
+
+
+last_command = None
+last_command_time = 0
+
+
+def handle_command(text: str) -> None:
+    global last_command, last_command_time
+    if not text:
+        return
+    words = text.split()
+    now = time.time()
+    if text == last_command and (now - last_command_time) < COOLDOWN:
+        return
+    last_command = text
+    last_command_time = now
+
+    print(f"Command: '{text}'")
+
+    if text == "skip":
+        print("⏭  Skipping track!")
+        keyboard.send("next track")
+    elif text == "restart":
+        print("⏮  Previous track!")
+        keyboard.send("previous track")
+    elif text == "rewind":
+        print("🔁  Restarting track!")
+        keyboard.send("previous track")
+        time.sleep(0.05)
+        keyboard.send("previous track")
+    elif text in ("pause", "play"):
+        print("⏸  Toggling playback!")
+        keyboard.send("play/pause media")
+    elif text == "copy":
+        print("📋  Copy!")
+        keyboard.send("ctrl+c")
+    elif text == "paste":
+        print("📋  Paste!")
+        keyboard.send("ctrl+v")
+    elif text == "save":
+        print("💾  Save!")
+        keyboard.send("ctrl+s")
+    elif text == "enter":
+        print("↵  Enter!")
+        keyboard.send("enter")
+    elif text == "close voice commands":
+        print("🛑  Closing voice commands!")
+        sys.exit(0)
+    elif text == "restart voice commands":
+        print("🔄  Restarting voice commands!")
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
+        change_volume(words[1], words[2])
+    elif text == "mute":
+        toggle_mute()
+    elif text == "diagnose":
+        print_diagnostic()
+    elif words[0] == "move":
+        if len(words) < 2:
+            print("  Say 'move' followed by an app name and/or position")
+        else:
+            app, rest = _parse_app(words, 1)
+            if app:
+                snap_app(app, " ".join(rest))
+            else:
+                snap_app(None, " ".join(words[1:]))
+    elif words[0] == "open":
+        if len(words) == 1:
+            print("  Say 'open' followed by an app name")
+        elif words[1] == "all":
+            keyboard.send("windows+d")
+            print("🗖  Showing all windows!")
+        elif words[1] == "new":
+            if len(words) > 2:
+                app, _ = _parse_app(words, 2)
+                _launch(app) if app else print("  Say 'open new' followed by an app name")
+            else:
+                print("  Say 'open new' followed by an app name")
+        else:
+            app, rest = _parse_app(words, 1)
+            if app:
+                position = " ".join(rest)
+                if position in SNAP_POSITIONS:
+                    open_and_snap(app, position)
+                else:
+                    open_or_focus(app)
+            else:
+                print(f"  Don't know '{' '.join(words[1:])}'")
+    elif words[0] == "minimise":
+        if len(words) > 1:
+            if words[1] == "all":
+                keyboard.send("windows+d")
+                print("🗕  Minimised all windows!")
+            else:
+                app, _ = _parse_app(words, 1)
+                minimise_app(app) if app else minimise_app()
+        else:
+            minimise_app()
+    elif words[0] == "maximise":
+        app, _ = _parse_app(words, 1) if len(words) > 1 else (None, [])
+        snap_app(app, "fullscreen")
+    elif words[0] == "close":
+        if len(words) > 1:
+            app, _ = _parse_app(words, 1)
+            close_app(app) if app else print("  Say 'close' followed by an app name")
+        else:
+            print("  Say 'close' followed by an app name")
+
+
+# ── VOSK SETUP ───────────────────────────────────────────────────────────
+print("Loading model...")
+model = Model(MODEL_PATH)
+rec = KaldiRecognizer(model, SAMPLE_RATE)
+rec.SetGrammar(build_grammar())
+rec.SetWords(True)
+
+print_diagnostic()
+
+p = pyaudio.PyAudio()
+stream = p.open(
+    format=pyaudio.paInt16,
+    channels=1,
+    rate=SAMPLE_RATE,
+    input=True,
+    frames_per_buffer=FRAMES_PER_BUFFER,
+)
+stream.start_stream()
+
+print("Listening... Press Ctrl+C to quit.")
+print(f"Confidence threshold: {CONFIDENCE_THRESHOLD:.0%}")
+print("Say 'diagnose' at any time to recheck running apps.\n")
+
+try:
+    while True:
+        data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
+        if rec.AcceptWaveform(data):
+            result = json.loads(rec.Result())
+            text = result.get("text", "").strip().lower()
+            if not text:
+                continue
+            conf = average_confidence(result)
+            if conf >= CONFIDENCE_THRESHOLD:
+                handle_command(text)
+            else:
+                print(f"💤  Low confidence ({conf:.0%}): '{text}' — ignored")
+        else:
+            partial = json.loads(rec.PartialResult())
+            text = partial.get("partial", "").strip().lower()
+            if text:
+                print(f"👂  Hearing: '{text}'")
+
+except KeyboardInterrupt:
+    print("\nStopped.")
+finally:
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
