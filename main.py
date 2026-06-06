@@ -379,6 +379,7 @@ def main():
                     color=MUTED, state="disabled")
     b_start.config(command=lambda: _start_engine(root, status_var, b_start, b_stop))
     b_apps = mkbtn(btns, "⚙  Manage Apps",      lambda: _open_manager(root))
+    b_cfg  = mkbtn(btns, "🔧  Settings",         lambda: _open_settings(root), color=MUTED)
     b_upd  = mkbtn(btns, "🔄  Check for Updates",
                    lambda: _check_updates_ui(root, status_var), color=MUTED)
 
