@@ -640,31 +640,32 @@ def build_grammar() -> str:
     words = [
         _cw("skip"), _cw("previous"), _cw("rewind"),
         _cw("play_pause"), "play",          # always keep "play" as alias
-        "open", "minimise", "close",
+        _cw("open"), _cw("minimise"), _cw("close"),
         _cw("minimise_all"), _cw("open_all"),
-        "maximise",
+        _cw("maximise"),
         _cw("mute"),
         _cw("diagnose"),
         _cw("copy"), _cw("paste"),
         _cw("save"),
         _cw("enter"),
         _cw("undo"),
+        _cw("merge"),
         _cw("stop_engine"),
         _cw("restart_engine"),
         "[unk]",
     ]
     for app_name in APPS:
-        words.append(f"open {app_name}")
-        words.append(f"open new {app_name}")
-        words.append(f"minimise {app_name}")
-        words.append(f"maximise {app_name}")
-        words.append(f"close {app_name}")
-        words.append(f"merge {app_name}")
+        words.append(f"{_cw('open')} {app_name}")
+        words.append(f"{_cw('open')} new {app_name}")
+        words.append(f"{_cw('minimise')} {app_name}")
+        words.append(f"{_cw('maximise')} {app_name}")
+        words.append(f"{_cw('close')} {app_name}")
+        words.append(f"{_cw('merge')} {app_name}")
         for pos in SNAP_POSITIONS:
-            words.append(f"move {app_name} {pos}")
-            words.append(f"open {app_name} {pos}")
+            words.append(f"{_cw('move')} {app_name} {pos}")
+            words.append(f"{_cw('open')} {app_name} {pos}")
     for pos in SNAP_POSITIONS:
-        words.append(f"move {pos}")
+        words.append(f"{_cw('move')} {pos}")
     for step in _VOLUME_STEPS:
         words.append(f"volume up {step}")
         words.append(f"volume down {step}")
