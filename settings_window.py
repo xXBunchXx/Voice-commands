@@ -387,21 +387,31 @@ class SettingsWindow(tk.Toplevel):
             w.destroy()
         self._ctx_row_vars = []
         cmds = user_config.get_context_commands()
+        canvas = self._ctx_canvas
+        def _scroll(e):
+            canvas.yview_scroll(-1 * (e.delta // 120), "units")
         for phrase, contexts in sorted(cmds.items()):
             for context, shortcut in contexts.items():
                 var = tk.BooleanVar(value=False)
                 row = tk.Frame(self._ctx_inner, bg=CARD)
                 row.pack(fill="x", padx=4, pady=1)
-                tk.Checkbutton(row, variable=var, bg=CARD,
-                               activebackground=CARD, selectcolor=ENTRY_BG).pack(side="left")
-                tk.Label(row, text=phrase, bg=CARD, fg=FG,
-                         font=("Segoe UI", 9), width=22, anchor="w").pack(side="left")
+                cb = tk.Checkbutton(row, variable=var, bg=CARD,
+                               activebackground=CARD, selectcolor=ENTRY_BG)
+                cb.pack(side="left")
+                l1 = tk.Label(row, text=phrase, bg=CARD, fg=FG,
+                         font=("Segoe UI", 9), width=22, anchor="w")
+                l1.pack(side="left")
                 ctx_color = {"browser": "#89b4fa", "explorer": "#a6e3a1",
                              "editor": "#f9e2af", "any": "#cba6f7"}.get(context, FG)
-                tk.Label(row, text=context, bg=CARD, fg=ctx_color,
-                         font=("Segoe UI", 8), width=10, anchor="w").pack(side="left")
-                tk.Label(row, text=shortcut, bg=CARD, fg=MUTED,
-                         font=("Consolas", 8), width=16, anchor="w").pack(side="left")
+                l2 = tk.Label(row, text=context, bg=CARD, fg=ctx_color,
+                         font=("Segoe UI", 8), width=10, anchor="w")
+                l2.pack(side="left")
+                l3 = tk.Label(row, text=shortcut, bg=CARD, fg=MUTED,
+                         font=("Consolas", 8), width=16, anchor="w")
+                l3.pack(side="left")
+                # Propagate scroll events from row widgets to the canvas
+                for w in (row, cb, l1, l2, l3):
+                    w.bind("<MouseWheel>", _scroll)
                 self._ctx_row_vars.append((var, phrase, context))
 
     def _add_context_cmd(self):
