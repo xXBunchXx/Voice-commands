@@ -147,9 +147,12 @@ def _auto_detect_model() -> str:
 
 
 def _schema_defaults() -> dict:
+    vc_exe = str(_exe_dir() / "VoiceCommands.exe")
+    apps  = {**DEFAULT_APPS,       "voice commands": vc_exe}
+    procs = {**DEFAULT_PROC_NAMES, "voice commands": "VoiceCommands.exe"}
     return {
-        "APPS":       DEFAULT_APPS,
-        "PROC_NAMES": DEFAULT_PROC_NAMES,
+        "APPS":       apps,
+        "PROC_NAMES": procs,
         "MODEL_PATH": _auto_detect_model(),   # bare folder name — resolved at runtime
     }
 
