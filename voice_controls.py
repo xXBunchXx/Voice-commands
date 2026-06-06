@@ -633,6 +633,8 @@ def handle_command(text: str) -> None:
     elif text == "enter":
         print("↵  Enter!")
         keyboard.send("enter")
+    elif text == "undo":
+        undo_close()
     elif text == "close voice commands":
         print("🛑  Closing voice commands!")
         _stop_event.set()
