@@ -42,6 +42,14 @@ FRAMES_PER_BUFFER = 1024
 COOLDOWN = 1.5
 CONFIDENCE_THRESHOLD = 0.65
 
+# Populated from config in run() — use _cw(key) to get current trigger word
+_COMMAND_WORDS: dict[str, str] = user_config.DEFAULT_COMMAND_WORDS.copy()
+_VOLUME_STEPS:  dict[str, int]  = user_config.DEFAULT_VOLUME_STEPS.copy()
+
+def _cw(key: str) -> str:
+    """Return the configured trigger word for an action key."""
+    return _COMMAND_WORDS.get(key, user_config.DEFAULT_COMMAND_WORDS.get(key, key))
+
 # Window classes to exclude per app.
 # IME / Default IME are Windows system Input Method Editor windows —
 # every thread creates one; they are never the app's main UI.
