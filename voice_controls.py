@@ -576,6 +576,7 @@ def minimise_app(app_name: str | None = None) -> None:
                 time.sleep(0.6)     # let the window reach the foreground
             keyboard.send("windows+down")
             print(f"🗕  Minimised {app_name}!")
+            _status(f"Minimising {app_name}")
             return
 
         hwnds = _windows_for_app(app_name)
@@ -583,6 +584,7 @@ def minimise_app(app_name: str | None = None) -> None:
             hwnd = _pick_window(hwnds, app_name)
             win32gui.ShowWindow(hwnd, 6)
             print(f"🗕  Minimised {app_name}!")
+            _status(f"Minimising {app_name}")
         else:
             print(f"  Couldn't find a window for '{app_name}'")
     else:
@@ -590,6 +592,7 @@ def minimise_app(app_name: str | None = None) -> None:
         if win:
             win.minimize()
             print("🗕  Minimised current window!")
+            _status("Minimising current window")
 
 
 # ── Pending-close state ───────────────────────────────────────────────────
