@@ -248,6 +248,17 @@ def set_cooldown(value: float) -> None:
     data["COOLDOWN"] = round(max(0.0, value), 1)
     save(data)
 
+def get_context_commands() -> dict[str, dict[str, str]]:
+    stored = load().get("CONTEXT_COMMANDS", {})
+    merged = {**DEFAULT_CONTEXT_COMMANDS}
+    merged.update(stored)   # user additions/overrides on top
+    return merged
+
+def set_context_commands(cmds: dict[str, dict[str, str]]) -> None:
+    data = load()
+    data["CONTEXT_COMMANDS"] = cmds
+    save(data)
+
 
 def add_entry(name: str, path: str, proc: str) -> None:
     data = load()
