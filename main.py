@@ -230,6 +230,13 @@ def _open_manager(root):
     win.focus_set()
 
 
+def _open_settings(root):
+    from settings_window import SettingsWindow
+    win = SettingsWindow(root)
+    win.grab_set()
+    win.focus_set()
+
+
 # ── Update check UI ────────────────────────────────────────────────────────────
 
 def _check_updates_ui(root, status_var):
