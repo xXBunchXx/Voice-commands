@@ -855,6 +855,7 @@ def handle_command(text: str) -> None:
         elif words[1] == "all":
             keyboard.send("windows+d")
             print("🗖  Showing all windows!")
+            _status("Show all windows")
         elif words[1] == "new":
             if len(words) > 2:
                 app, _ = _parse_app(words, 2)
