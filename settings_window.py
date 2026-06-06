@@ -41,6 +41,80 @@ def _card(parent):
     return tk.Frame(parent, bg=CARD, padx=14, pady=10)
 
 
+class _ContextCmdDialog(tk.Toplevel):
+    """Dialog for adding a new context command rule."""
+    def __init__(self, master):
+        super().__init__(master)
+        self.title("Add Context Command")
+        self.configure(bg=BG)
+        self.resizable(False, False)
+        self.result = None
+
+        tk.Label(self, text="🖱  Add Context Command", bg=BG, fg=ACC,
+                 font=("Segoe UI Semibold", 11)).pack(padx=20, pady=(14, 8))
+
+        fields = tk.Frame(self, bg=BG)
+        fields.pack(fill="x", padx=20, pady=4)
+
+        def row(label, widget):
+            f = tk.Frame(fields, bg=BG)
+            f.pack(fill="x", pady=4)
+            _lbl(f, label).pack(anchor="w")
+            widget(f).pack(fill="x")
+
+        self._phrase = tk.StringVar()
+        self._context = tk.StringVar(value="browser")
+        self._shortcut = tk.StringVar()
+
+        row("Voice phrase  (what you say)", lambda f: tk.Entry(
+            f, textvariable=self._phrase, bg=ENTRY_BG, fg=FG,
+            insertbackground=FG, relief="flat", font=("Segoe UI", 10), bd=4))
+
+        def ctx_row(f):
+            style = ttk.Style(f); style.theme_use("clam")
+            style.configure("TCombobox", fieldbackground=ENTRY_BG, foreground=FG,
+                            background=CARD, arrowcolor=FG)
+            cb = ttk.Combobox(f, textvariable=self._context, state="readonly",
+                              values=["browser", "explorer", "editor", "any"],
+                              font=("Segoe UI", 10))
+            return cb
+        row("Context  (when does it work?)", ctx_row)
+
+        _lbl(fields, "  browser = Chrome/Firefox/Edge    explorer = File Explorer\n"
+             "  editor = Notepad/VS Code etc.      any = always",
+             fg=MUTED, font=("Segoe UI", 8), justify="left").pack(anchor="w")
+
+        row("Keyboard shortcut  (e.g. ctrl+w  or  f5  or  windows+l)",
+            lambda f: tk.Entry(f, textvariable=self._shortcut, bg=ENTRY_BG, fg=FG,
+                               insertbackground=FG, relief="flat",
+                               font=("Consolas", 10), bd=4))
+
+        btn_row = tk.Frame(self, bg=BG)
+        btn_row.pack(fill="x", padx=20, pady=(4, 14))
+
+        def _ok():
+            phrase   = self._phrase.get().strip().lower()
+            context  = self._context.get().strip()
+            shortcut = self._shortcut.get().strip().lower()
+            if not phrase or not shortcut:
+                return
+            self.result = (phrase, context, shortcut)
+            self.destroy()
+
+        tk.Button(btn_row, text="Add", command=_ok,
+                  bg=ACC, fg="#fff", activebackground=ACC, activeforeground="#fff",
+                  relief="flat", font=("Segoe UI Semibold", 9),
+                  padx=14, pady=5, cursor="hand2").pack(side="right")
+        tk.Button(btn_row, text="Cancel", command=self.destroy,
+                  bg=MUTED, fg="#fff", activebackground=MUTED, activeforeground="#fff",
+                  relief="flat", font=("Segoe UI Semibold", 9),
+                  padx=14, pady=5, cursor="hand2").pack(side="right", padx=(0, 8))
+
+        self.bind("<Return>", lambda _: _ok())
+        self.bind("<Escape>", lambda _: self.destroy())
+        self.grab_set()
+
+
 class SettingsWindow(tk.Toplevel):
 
     def __init__(self, master):
