@@ -797,6 +797,9 @@ def handle_command(text: str) -> None:
     elif words[0] == "maximise":
         app, _ = _parse_app(words, 1) if len(words) > 1 else (None, [])
         snap_app(app, "fullscreen")
+    elif words[0] == "merge":
+        # "merge files" / "merge [any explorer-type app]" — consolidate windows into tabs
+        merge_explorer_windows()
     elif words[0] == "close":
         if len(words) > 1:
             app, _ = _parse_app(words, 1)
