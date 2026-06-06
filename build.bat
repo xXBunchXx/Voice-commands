@@ -12,6 +12,7 @@ pyinstaller ^
   --noconsole ^
   --name VoiceCommands ^
   --add-data "version.txt;." ^
+  --collect-all vosk ^
   main.py
 
 if errorlevel 1 (
@@ -25,17 +26,19 @@ echo Copying Vosk model into dist\ ...
 xcopy /E /I /Y "vosk-model-small-en-us-0.15" "dist\vosk-model-small-en-us-0.15"
 
 echo.
-echo Done! Contents of dist\:
-dir /B dist\
+echo Zipping dist\ into VoiceCommands.zip ...
+powershell -Command "Compress-Archive -Path 'dist\*' -DestinationPath 'VoiceCommands.zip' -Force"
 
 echo.
-echo Pushing updated exe to GitHub...
-git add dist\VoiceCommands.exe version.txt
-git commit -m "Release: update exe and version"
+echo Pushing to GitHub...
+git add VoiceCommands.zip dist\VoiceCommands.exe version.txt
+git commit -m "Release: update exe and zip"
 git push
 
 echo.
-echo Done! Share this link to download the latest exe:
-echo https://github.com/xXBunchXx/Voice-commands/raw/main/dist/VoiceCommands.exe
+echo ============================================================
+echo  Done! Share this download link with anyone who needs it:
+echo  https://github.com/xXBunchXx/Voice-commands/raw/main/VoiceCommands.zip
+echo ============================================================
 echo.
 pause
