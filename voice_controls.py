@@ -104,6 +104,7 @@ def _try_context_command(text: str) -> bool:
             keyboard.send(shortcut)
             win_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
             print(f"🖱  {text}  [{context}]  → {shortcut}  ({win_title})")
+            _status(f"{text.title()}  [{context}]")
             return True
     # Phrase recognised but context didn't match
     contexts = " / ".join(targets.keys())
