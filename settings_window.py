@@ -242,7 +242,7 @@ class SettingsWindow(tk.Toplevel):
 
     def _save_volume(self):
         try:
-            steps = {w: v.get() for w, v in self._vol_vars.items()}
+            steps = {w: int(sp.get()) for w, sp in self._vol_spins.items()}
             user_config.set_volume_steps(steps)
             self._flash("✓  Volume steps saved — restart engine to apply.")
         except Exception as e:
