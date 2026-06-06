@@ -428,21 +428,83 @@ def minimise_app(app_name: str | None = None) -> None:
             print("🗕  Minimised current window!")
 
 
+# ── Pending-close state ───────────────────────────────────────────────────
+_pending_close: dict | None = None   # {app, hwnds, timer}
+_pending_cancel = _threading.Event()
+
+
+def _commit_close(app_name: str, hwnds: list[int]) -> None:
+    """Actually close the windows — called after the undo window expires."""
+    global _pending_close
+    _pending_close = None
+    if app_name in CLOSE_OVERRIDE:
+        CLOSE_OVERRIDE[app_name]()
+    else:
+        for hwnd in hwnds:
+            try:
+                win32gui.PostMessage(hwnd, 0x0010, 0, 0)
+            except Exception:
+                pass
+    print(f"✕  Closed {app_name}!")
+
+
 def close_app(app_name: str) -> None:
+    global _pending_close
     if app_name not in APPS:
         print(f"  Don't know '{app_name}'")
         return
+
+    # Cancel any existing pending close before starting a new one
+    if _pending_close is not None:
+        _pending_cancel.set()
+
+    delay = user_config.get_close_delay()
+
+    # For CLOSE_OVERRIDE apps there's no window to minimise first
     if app_name in CLOSE_OVERRIDE:
-        CLOSE_OVERRIDE[app_name]()
-        print(f"✕  Closed {app_name}!")
-        return
-    hwnds = _windows_for_app(app_name)
-    if hwnds:
-        for hwnd in hwnds:
-            win32gui.PostMessage(hwnd, 0x0010, 0, 0)
-        print(f"✕  Closed {app_name}!")
+        hwnds = []
     else:
-        print(f"  Couldn't find a window for '{app_name}'")
+        hwnds = _windows_for_app(app_name)
+        if not hwnds:
+            print(f"  Couldn't find a window for '{app_name}'")
+            return
+        # Minimise so the user can see something happened
+        for hwnd in hwnds:
+            win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+
+    _pending_cancel.clear()
+    _pending_close = {"app": app_name, "hwnds": hwnds}
+
+    print(f"⏳  Closing {app_name} in {delay}s — say 'undo' to cancel!")
+
+    def _timer():
+        global _pending_close
+        cancelled = _pending_cancel.wait(timeout=delay)
+        if not cancelled and _pending_close and _pending_close["app"] == app_name:
+            _commit_close(app_name, hwnds)
+
+    t = _threading.Thread(target=_timer, daemon=True)
+    t.start()
+    _pending_close["timer"] = t
+
+
+def undo_close() -> None:
+    global _pending_close
+    if _pending_close is None:
+        print("  Nothing to undo.")
+        return
+    app_name = _pending_close["app"]
+    hwnds    = _pending_close["hwnds"]
+    _pending_cancel.set()
+    _pending_close = None
+    # Restore minimised windows
+    for hwnd in hwnds:
+        try:
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            _set_foreground(hwnd)
+        except Exception:
+            pass
+    print(f"↩  Cancelled close — {app_name} restored!")
 
 
 # ── DIAGNOSTIC ───────────────────────────────────────────────────────────
