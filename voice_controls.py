@@ -715,6 +715,9 @@ def build_grammar() -> str:
     for step in _VOLUME_STEPS:
         words.append(f"volume up {step}")
         words.append(f"volume down {step}")
+    # Context-sensitive commands
+    for phrase in _CONTEXT_COMMANDS:
+        words.append(phrase)
     # Deduplicate while preserving order
     seen = set(); out = []
     for w in words:
