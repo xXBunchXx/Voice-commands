@@ -193,6 +193,31 @@ class SettingsWindow(tk.Toplevel):
         self._delay_spin.grid(row=1, column=0, sticky="w")
         _lbl(card2, "seconds", fg=MUTED).grid(row=1, column=1, sticky="w", padx=(4, 0))
 
+        # Status overlay
+        sec3 = _section(frame, "Status Overlay")
+        sec3.pack(fill="x", padx=2, pady=(14, 0))
+        card3 = _card(sec3)
+        card3.pack(fill="x")
+
+        self._overlay_enabled = tk.BooleanVar()
+        tk.Checkbutton(card3, text="Show overlay when a command fires",
+                       variable=self._overlay_enabled,
+                       bg=CARD, fg=FG, selectcolor=ENTRY_BG,
+                       activebackground=CARD,
+                       font=("Segoe UI", 9)).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        _lbl(card3, "Position on screen:").grid(row=1, column=0, sticky="w")
+        self._overlay_pos = tk.StringVar()
+        style = ttk.Style(card3)
+        style.configure("TCombobox", fieldbackground=ENTRY_BG,
+                        foreground=FG, background=CARD, arrowcolor=FG)
+        ttk.Combobox(card3, textvariable=self._overlay_pos,
+                     state="readonly", width=18,
+                     values=["top-left", "top-center", "top-right",
+                             "bottom-left", "bottom-center", "bottom-right"]
+                     ).grid(row=1, column=1, sticky="w", padx=(10, 0))
+
         # Save button
         self._make_save_btn(frame, self._save_engine)
 
