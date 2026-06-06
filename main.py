@@ -56,6 +56,91 @@ class _QueueWriter:
             self._original.reconfigure(**kw)
 
 
+# ── Model auto-downloader ─────────────────────────────────────────────────────
+
+def _download_model_if_missing():
+    """If the vosk model isn't next to the exe, download and extract it.
+    Shows a progress window so the user knows what's happening."""
+    model_dir = pathlib.Path(user_config._exe_dir()) / MODEL_NAME
+    if model_dir.is_dir():
+        return   # already present
+
+    # Ask first
+    answer = messagebox.askyesno(
+        "Voice model not found",
+        f"The speech recognition model is missing.\n\n"
+        f"Download it now? (~40 MB)\n\n"
+        f"This only happens once.",
+    )
+    if not answer:
+        return
+
+    # Progress window
+    prog_win = tk.Toplevel()
+    prog_win.title("Downloading model…")
+    prog_win.resizable(False, False)
+    prog_win.configure(bg="#1e1e2e")
+    prog_win.grab_set()
+
+    tk.Label(prog_win, text="Downloading voice model…",
+             bg="#1e1e2e", fg="#cdd6f4",
+             font=("Segoe UI", 11)).pack(padx=30, pady=(20, 6))
+
+    detail_var = tk.StringVar(value="Connecting…")
+    tk.Label(prog_win, textvariable=detail_var,
+             bg="#1e1e2e", fg="#585b70",
+             font=("Segoe UI", 9)).pack(padx=30)
+
+    bar = ttk.Progressbar(prog_win, length=320, mode="determinate")
+    bar.pack(padx=30, pady=(10, 20))
+
+    err: list[str] = []
+
+    def _do_download():
+        try:
+            ctx = _ssl_ctx()
+            req = urllib.request.Request(MODEL_ZIP_URL, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+                total = int(resp.headers.get("Content-Length", 0))
+                downloaded = 0
+                chunks = io.BytesIO()
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    chunks.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded / total * 100
+                        mb  = downloaded / 1_048_576
+                        prog_win.after(0, lambda p=pct, m=mb: (
+                            bar.config(value=p),
+                            detail_var.set(f"{m:.1f} MB downloaded…"),
+                        ))
+
+            prog_win.after(0, lambda: detail_var.set("Extracting…"))
+            chunks.seek(0)
+            dest = pathlib.Path(user_config._exe_dir())
+            with zipfile.ZipFile(chunks) as zf:
+                zf.extractall(dest)
+
+            # Save the detected path into config
+            user_config.set_model_path(MODEL_NAME)
+            prog_win.after(0, prog_win.destroy)
+
+        except Exception as e:
+            err.append(str(e))
+            prog_win.after(0, prog_win.destroy)
+
+    threading.Thread(target=_do_download, daemon=True).start()
+    prog_win.wait_window()   # blocks until download done or window closed
+
+    if err:
+        messagebox.showerror("Download failed",
+                             f"Could not download the model:\n\n{err[0]}\n\n"
+                             "Use the Browse… button to locate it manually.")
+
+
 # ── SSL context (PyInstaller doesn't bundle certs) ────────────────────────────
 
 def _ssl_ctx():
