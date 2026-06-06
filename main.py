@@ -105,22 +105,42 @@ def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
     def _download():
         try:
             root.after(0, lambda: status_var.set("Downloading update…"))
-            with _urlopen(GITHUB_EXE_URL, timeout=60) as resp:
-                data = resp.read()
-            new_exe.write_bytes(data)
+            # Stream in chunks so large files don't get truncated
+            with _urlopen(GITHUB_EXE_URL, timeout=120) as resp:
+                total = int(resp.headers.get("Content-Length", 0))
+                downloaded = 0
+                chunk_size = 65536  # 64 KB
+                with open(new_exe, "wb") as f:
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total:
+                            pct = int(downloaded / total * 100)
+                            root.after(0, lambda p=pct: status_var.set(
+                                f"Downloading… {p}%"))
+            # Verify the file isn't suspiciously small
+            if new_exe.stat().st_size < 1_000_000:
+                raise RuntimeError("Downloaded file is too small — may be corrupt.")
             bat = exe_path.with_name("_vc_updater.bat")
             bat.write_text(
-                f'@echo off\ntimeout /t 2 /nobreak >nul\n'
+                f'@echo off\n'
+                f'timeout /t 3 /nobreak >nul\n'
                 f'move /Y "{new_exe}" "{exe_path}"\n'
-                f'start "" "{exe_path}"\ndel "%~f0"\n',
+                f'timeout /t 1 /nobreak >nul\n'
+                f'start "" "{exe_path}"\n'
+                f'del "%~f0"\n',
                 encoding="ascii",
             )
             subprocess.Popen(["cmd", "/c", str(bat)],
                              creationflags=subprocess.CREATE_NO_WINDOW)
             root.after(0, root.destroy)
         except Exception as e:
+            _err = str(e)
             root.after(0, lambda: messagebox.showerror(
-                "Update failed", str(e), parent=root))
+                "Update failed", _err, parent=root))
             root.after(0, lambda: status_var.set("○ Stopped"))
 
     threading.Thread(target=_download, daemon=True).start()
