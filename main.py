@@ -158,6 +158,9 @@ def _engine_loop(stop_event, root, status_var, b_start, b_stop):
         import voice_controls
         import importlib
         importlib.reload(voice_controls)   # reload so config changes take effect
+        # Wire up the status overlay (must be set after reload)
+        if _overlay:
+            voice_controls._status_cb = lambda msg: root.after(0, _overlay.show, msg)
         _log_queue.put("   Voice engine loaded — starting loop\n\n")
         while True:
             stop_event.clear()
