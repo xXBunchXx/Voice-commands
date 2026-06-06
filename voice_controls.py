@@ -44,12 +44,58 @@ COOLDOWN = 1.5
 CONFIDENCE_THRESHOLD = 0.65
 
 # Populated from config in run() — use _cw(key) to get current trigger word
-_COMMAND_WORDS: dict[str, str] = user_config.DEFAULT_COMMAND_WORDS.copy()
-_VOLUME_STEPS:  dict[str, int]  = user_config.DEFAULT_VOLUME_STEPS.copy()
+_COMMAND_WORDS:    dict[str, str]             = user_config.DEFAULT_COMMAND_WORDS.copy()
+_VOLUME_STEPS:     dict[str, int]             = user_config.DEFAULT_VOLUME_STEPS.copy()
+_CONTEXT_COMMANDS: dict[str, dict[str, str]]  = user_config.DEFAULT_CONTEXT_COMMANDS.copy()
 
 def _cw(key: str) -> str:
     """Return the configured trigger word for an action key."""
     return _COMMAND_WORDS.get(key, user_config.DEFAULT_COMMAND_WORDS.get(key, key))
+
+
+def _get_active_proc() -> str:
+    """Return the exe name (lowercase) of the current foreground window's process."""
+    hwnd = win32gui.GetForegroundWindow()
+    if not hwnd:
+        return ""
+    try:
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        if time.monotonic() - _cache_built_at > _CACHE_TTL:
+            _refresh_pid_cache()
+        return _pid_name_cache.get(pid, "")
+    except Exception:
+        return ""
+
+
+def _proc_matches_context(proc: str, context: str) -> bool:
+    if context == "any":
+        return True
+    if context == "browser":
+        return proc in user_config.BROWSER_PROCS
+    if context == "explorer":
+        return proc in user_config.EXPLORER_PROCS
+    if context == "editor":
+        return proc in user_config.EDITOR_PROCS
+    return False
+
+
+def _try_context_command(text: str) -> bool:
+    """Try to run a context-sensitive command.
+    Returns True if the phrase was recognised (whether or not context matched)."""
+    if text not in _CONTEXT_COMMANDS:
+        return False
+    proc    = _get_active_proc()
+    targets = _CONTEXT_COMMANDS[text]
+    for context, shortcut in targets.items():
+        if _proc_matches_context(proc, context):
+            keyboard.send(shortcut)
+            win_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
+            print(f"🖱  {text}  [{context}]  → {shortcut}  ({win_title})")
+            return True
+    # Phrase recognised but context didn't match
+    contexts = " / ".join(targets.keys())
+    print(f"  '{text}' only works in: {contexts}  (active: {proc or 'unknown'})")
+    return True
 
 # Window classes to exclude per app.
 # IME / Default IME are Windows system Input Method Editor windows —
