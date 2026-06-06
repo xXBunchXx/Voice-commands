@@ -94,14 +94,6 @@ CLOSE_OVERRIDE = {
 # (e.g. Steam's CEF-based UI lives in a window our search can't reliably locate).
 MINIMISE_VIA_FOCUS: set[str] = {"steam"}
 
-# "one" → 2%, "two" → 4%, ... "five" → 10%
-VOLUME_STEPS: dict[str, float] = {
-    "one":   0.02,
-    "two":   0.04,
-    "three": 0.06,
-    "four":  0.08,
-    "five":  0.10,
-}
 
 # Snap positions — used to build the grammar and validate commands.
 # Positions are calculated at runtime from actual work area dimensions
