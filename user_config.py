@@ -57,12 +57,18 @@ def load() -> dict:
     try:
         with open(CONFIG_FILE, encoding="utf-8") as f:
             data = json.load(f)
-        # Ensure all expected keys exist (forward-compat for older configs)
+        # Ensure all expected top-level keys exist (forward-compat for older configs)
         changed = False
         for key, default in _schema_defaults().items():
             if key not in data:
                 data[key] = default
                 changed = True
+        # Ensure the "voice commands" entry always exists (added in a later version)
+        vc_exe = str(_exe_dir() / "VoiceCommands.exe")
+        if "voice commands" not in data.get("APPS", {}):
+            data.setdefault("APPS", {})["voice commands"] = vc_exe
+            data.setdefault("PROC_NAMES", {})["voice commands"] = "VoiceCommands.exe"
+            changed = True
         if changed:
             save(data)
         return data
