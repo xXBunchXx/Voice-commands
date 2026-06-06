@@ -398,15 +398,26 @@ class StatusOverlay:
         tb  = 56   # approximate taskbar height
 
         pos = user_config.get_overlay_position()
-        options = {
-            "top-left":      (pad,            pad),
-            "top-center":    ((sw-ow)//2,     pad),
-            "top-right":     (sw-ow-pad,      pad),
-            "bottom-left":   (pad,            sh-oh-tb),
-            "bottom-center": ((sw-ow)//2,     sh-oh-tb),
-            "bottom-right":  (sw-ow-pad,      sh-oh-tb),
-        }
-        x, y = options.get(pos, options["bottom-right"])
+
+        if pos == "near cursor":
+            cx = self._root.winfo_pointerx()
+            cy = self._root.winfo_pointery()
+            x  = cx + 18
+            y  = cy + 22
+            # Clamp so the box never goes off-screen
+            x  = max(pad, min(x, sw - ow - pad))
+            y  = max(pad, min(y, sh - oh - tb))
+        else:
+            options = {
+                "top-left":      (pad,            pad),
+                "top-center":    ((sw-ow)//2,     pad),
+                "top-right":     (sw-ow-pad,      pad),
+                "bottom-left":   (pad,            sh-oh-tb),
+                "bottom-center": ((sw-ow)//2,     sh-oh-tb),
+                "bottom-right":  (sw-ow-pad,      sh-oh-tb),
+            }
+            x, y = options.get(pos, options["bottom-right"])
+
         self._win.geometry(f"+{x}+{y}")
 
 
