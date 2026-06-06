@@ -226,10 +226,14 @@ def _schema_defaults() -> dict:
     apps  = {**DEFAULT_APPS,       "voice commands": vc_exe}
     procs = {**DEFAULT_PROC_NAMES, "voice commands": "VoiceCommands.exe"}
     return {
-        "APPS":        apps,
-        "PROC_NAMES":  procs,
-        "MODEL_PATH":  _auto_detect_model(),
-        "CLOSE_DELAY": 5,   # seconds before a pending close is committed
+        "APPS":                 apps,
+        "PROC_NAMES":           procs,
+        "MODEL_PATH":           _auto_detect_model(),
+        "CLOSE_DELAY":          5,
+        "CONFIDENCE_THRESHOLD": 0.65,
+        "COOLDOWN":             1.5,
+        "COMMAND_WORDS":        DEFAULT_COMMAND_WORDS.copy(),
+        "VOLUME_STEPS":         DEFAULT_VOLUME_STEPS.copy(),
     }
 
 
