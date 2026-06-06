@@ -14,7 +14,13 @@ CONFIG_FILE = APPDATA_DIR / "config.json"
 # When frozen by PyInstaller sys.executable is the .exe; otherwise it's python.
 # We use this to resolve the model path relative to wherever the exe lives.
 def _exe_dir() -> pathlib.Path:
-    return pathlib.Path(sys.executable).parent
+    """Return the folder that contains the exe (frozen) or the script (dev)."""
+    if getattr(sys, "frozen", False):
+        # Running as a PyInstaller .exe — sys.executable is the .exe path
+        return pathlib.Path(sys.executable).parent
+    else:
+        # Running as a plain .py script — use the directory of this file
+        return pathlib.Path(__file__).resolve().parent
 
 # The model folder name stored in config (relative, no leading path).
 # Resolved against the exe directory at runtime so it works on any machine.
