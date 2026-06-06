@@ -422,9 +422,10 @@ def main():
     MUTED = "#585b70"
     LOG_BG = "#11111b"
 
-    global _root_ref
+    global _root_ref, _overlay
     root = tk.Tk()
     _root_ref = root
+    _overlay  = StatusOverlay(root)
     root.title(f"Voice Commands  v{VERSION}")
     root.configure(bg=BG)
     root.resizable(True, True)
