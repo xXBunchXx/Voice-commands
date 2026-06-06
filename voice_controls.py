@@ -754,27 +754,27 @@ def handle_command(text: str) -> None:
         toggle_mute()
     elif text == _cw("diagnose"):
         print_diagnostic()
-    elif words[0] == "move":
+    elif words[0] == _cw("move"):
         if len(words) < 2:
-            print("  Say 'move' followed by an app name and/or position")
+            print(f"  Say '{_cw('move')}' followed by an app name and/or position")
         else:
             app, rest = _parse_app(words, 1)
             if app:
                 snap_app(app, " ".join(rest))
             else:
                 snap_app(None, " ".join(words[1:]))
-    elif words[0] == "open":
+    elif words[0] == _cw("open"):
         if len(words) == 1:
-            print("  Say 'open' followed by an app name")
+            print(f"  Say '{_cw('open')}' followed by an app name")
         elif words[1] == "all":
             keyboard.send("windows+d")
             print("🗖  Showing all windows!")
         elif words[1] == "new":
             if len(words) > 2:
                 app, _ = _parse_app(words, 2)
-                _launch(app) if app else print("  Say 'open new' followed by an app name")
+                _launch(app) if app else print(f"  Say '{_cw('open')} new' followed by an app name")
             else:
-                print("  Say 'open new' followed by an app name")
+                print(f"  Say '{_cw('open')} new' followed by an app name")
         else:
             app, rest = _parse_app(words, 1)
             if app:
@@ -785,7 +785,7 @@ def handle_command(text: str) -> None:
                     open_or_focus(app)
             else:
                 print(f"  Don't know '{' '.join(words[1:])}'")
-    elif words[0] == "minimise":
+    elif words[0] == _cw("minimise"):
         if len(words) > 1:
             if words[1] == "all":
                 keyboard.send("windows+d")
@@ -795,18 +795,17 @@ def handle_command(text: str) -> None:
                 minimise_app(app) if app else minimise_app()
         else:
             minimise_app()
-    elif words[0] == "maximise":
+    elif words[0] == _cw("maximise"):
         app, _ = _parse_app(words, 1) if len(words) > 1 else (None, [])
         snap_app(app, "fullscreen")
-    elif words[0] == "merge":
-        # "merge files" / "merge [any explorer-type app]" — consolidate windows into tabs
+    elif words[0] == _cw("merge"):
         merge_explorer_windows()
-    elif words[0] == "close":
+    elif words[0] == _cw("close"):
         if len(words) > 1:
             app, _ = _parse_app(words, 1)
-            close_app(app) if app else print("  Say 'close' followed by an app name")
+            close_app(app) if app else print(f"  Say '{_cw('close')}' followed by an app name")
         else:
-            print("  Say 'close' followed by an app name")
+            print(f"  Say '{_cw('close')}' followed by an app name")
 
 
 # ── ENGINE ───────────────────────────────────────────────────────────────
