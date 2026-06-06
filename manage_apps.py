@@ -399,12 +399,12 @@ class AppManagerWindow(tk.Toplevel):
         quick_row.pack(fill="x", padx=PAD, pady=(8, 0))
         btn(quick_row, "📂  Browse for App",
             self._browse_exe, color=MUTED).pack(side="left")
+        btn(quick_row, "🌐  Add Website",
+            self._add_website, color=MUTED).pack(side="left", padx=(8, 0))
+        btn(quick_row, "📁  Add Folder",
+            self._add_folder, color=MUTED).pack(side="left", padx=(8, 0))
         btn(quick_row, "🔍  Scan Installed Apps",
             self._open_scan, color=MUTED).pack(side="left", padx=(8, 0))
-        tk.Label(quick_row,
-                 text="← auto-fill fields  or  add many at once →",
-                 bg=BG, fg=MUTED, font=("Segoe UI", 8)).pack(
-            side="left", padx=(10, 0))
 
         # ── Add ───────────────────────────────────────────────────────────────
         add_sec = section("➕  Add / Edit Entry")
