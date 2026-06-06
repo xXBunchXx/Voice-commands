@@ -356,7 +356,10 @@ class SettingsWindow(tk.Toplevel):
             lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.bind("<Configure>",
             lambda e: canvas.itemconfig(_cwin, width=e.width))
-        canvas.bind_all("<MouseWheel>",
+        # Bind scroll only to the canvas itself (not bind_all, which breaks spinboxes)
+        canvas.bind("<MouseWheel>",
+            lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+        self._ctx_inner.bind("<MouseWheel>",
             lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
 
         self._ctx_canvas = canvas
