@@ -304,10 +304,14 @@ def main():
     MUTED = "#585b70"
     LOG_BG = "#11111b"
 
+    global _root_ref
     root = tk.Tk()
+    _root_ref = root
     root.title(f"Voice Commands  v{VERSION}")
     root.configure(bg=BG)
     root.resizable(True, True)
+    # X button hides to tray instead of closing
+    root.protocol("WM_DELETE_WINDOW", lambda: _hide_window(root))
 
     def mkbtn(parent, text, cmd, color=ACC, state="normal", width=22):
         return tk.Button(parent, text=text, command=cmd,
