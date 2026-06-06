@@ -470,9 +470,12 @@ class AppManagerWindow(tk.Toplevel):
         if names:
             self.combo.set(names[0])
             self._show_preview(names[0])
+            self.e_rename.delete(0, "end")
+            self.e_rename.insert(0, names[0])
         else:
             self.combo.set("")
             self.preview.config(text="")
+            self.e_rename.delete(0, "end")
 
     def _show_preview(self, name: str):
         path = self._apps.get(name, "—")
