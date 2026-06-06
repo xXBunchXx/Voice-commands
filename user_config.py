@@ -5,32 +5,41 @@ This file is NEVER overwritten by updates — each user keeps their own entries.
 import json
 import os
 import pathlib
+import sys
 
 APPDATA_DIR = pathlib.Path(os.getenv("APPDATA", "~")) / "VoiceCommands"
 CONFIG_FILE = APPDATA_DIR / "config.json"
 
+# ── Exe / script directory ────────────────────────────────────────────────────
+# When frozen by PyInstaller sys.executable is the .exe; otherwise it's python.
+# We use this to resolve the model path relative to wherever the exe lives.
+def _exe_dir() -> pathlib.Path:
+    return pathlib.Path(sys.executable).parent
+
+# The model folder name stored in config (relative, no leading path).
+# Resolved against the exe directory at runtime so it works on any machine.
+DEFAULT_MODEL_FOLDER = "vosk-model-small-en-us-0.15"
+
 # ── Defaults (used only on very first run if no config exists) ───────────────
 DEFAULT_APPS: dict[str, str] = {
-    "firefox":       r"C:\Program Files\Mozilla Firefox\firefox.exe",
-    "steam":         r"C:\Program Files (x86)\Steam\steam.exe",
-    "files":         r"C:\Windows\explorer.exe",
-    "spotify":       r"C:\Users\Default\AppData\Roaming\Spotify\Spotify.exe",
-    "discord":       r"C:\Users\Default\AppData\Local\Discord\Discord.exe",
-    "command":       r"C:\Windows\System32\cmd.exe",
-    "settings":      r"ms-settings:",
+    "firefox":  r"C:\Program Files\Mozilla Firefox\firefox.exe",
+    "steam":    r"C:\Program Files (x86)\Steam\steam.exe",
+    "files":    r"C:\Windows\explorer.exe",
+    "spotify":  r"C:\Users\Default\AppData\Roaming\Spotify\Spotify.exe",
+    "discord":  r"C:\Users\Default\AppData\Local\Discord\Discord.exe",
+    "command":  r"C:\Windows\System32\cmd.exe",
+    "settings": r"ms-settings:",
 }
 
 DEFAULT_PROC_NAMES: dict[str, str] = {
-    "firefox":       "firefox.exe",
-    "steam":         "steam.exe",
-    "files":         "explorer.exe",
-    "spotify":       "spotify.exe",
-    "discord":       "discord.exe",
-    "command":       "cmd.exe",
-    "settings":      "ms-settings:",
+    "firefox":  "firefox.exe",
+    "steam":    "steam.exe",
+    "files":    "explorer.exe",
+    "spotify":  "spotify.exe",
+    "discord":  "discord.exe",
+    "command":  "cmd.exe",
+    "settings": "ms-settings:",
 }
-
-DEFAULT_MODEL_PATH = r"C:\VoiceCommands\vosk-model-small-en-us-0.15"
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
