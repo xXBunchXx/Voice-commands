@@ -334,7 +334,7 @@ def main():
         if "hearing:" in t or "👂" in t:       return "hear"
         if "command:" in t:                     return "cmd"
         if "low confidence" in t or "💤" in t:  return "low"
-        if any(x in t for x in ("error", "failed", "traceback", "exception")):
+        if any(x in t for x in ("error", "failed", "traceback", "exception", "❌", "crashed")):
             return "error"
         if any(x in t for x in ("──", "✓", "✗", "win —")):
             return "muted"
