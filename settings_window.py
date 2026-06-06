@@ -229,13 +229,13 @@ class SettingsWindow(tk.Toplevel):
         _lbl(card, 'Say "volume up one" / "volume down three" etc.',
              fg=MUTED).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
 
-        self._vol_vars: dict[str, tk.IntVar] = {}
+        self._vol_spins: dict[str, tk.Spinbox] = {}
         step_words = list(user_config.DEFAULT_VOLUME_STEPS.keys())
         for i, word in enumerate(step_words):
             _lbl(card, f'"{word}"').grid(row=i+1, column=0, sticky="w", pady=3)
-            v = tk.IntVar()
-            self._vol_vars[word] = v
-            _spin(card, 1, 100, v, width=5).grid(row=i+1, column=1, sticky="w", padx=(8, 4))
+            sp = _spin(card, 1, 100, tk.IntVar(), width=5)
+            sp.grid(row=i+1, column=1, sticky="w", padx=(8, 4))
+            self._vol_spins[word] = sp
             _lbl(card, "%", fg=MUTED).grid(row=i+1, column=2, sticky="w")
 
         self._make_save_btn(frame, self._save_volume)
