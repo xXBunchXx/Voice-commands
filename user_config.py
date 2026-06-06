@@ -303,6 +303,7 @@ def _schema_defaults() -> dict:
         "COOLDOWN":             1.5,
         "COMMAND_WORDS":        DEFAULT_COMMAND_WORDS.copy(),
         "VOLUME_STEPS":         DEFAULT_VOLUME_STEPS.copy(),
+        "CONTEXT_COMMANDS":     {},   # empty = use all defaults
     }
 
 
