@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$f = $input | ConvertFrom-Json | Select-Object -ExpandProperty tool_input | Select-Object -ExpandProperty file_path; if ($f -match '\\.py$') { Set-Location 'C:\\Users\\shark\\Desktop\\AI\\Skip spotify track'; git add $f; $msg = \"auto: update $([System.IO.Path]::GetFileName($f))\"; git diff --cached --quiet; if ($LASTEXITCODE -ne 0) { git commit -m $msg; git push } }",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
