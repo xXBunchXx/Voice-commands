@@ -702,8 +702,6 @@ def handle_command(text: str) -> None:
 
 
 # ── ENGINE ───────────────────────────────────────────────────────────────
-import threading as _threading
-
 _stop_event     = _threading.Event()
 _restart_requested = False
 
