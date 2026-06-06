@@ -70,6 +70,7 @@ class SettingsWindow(tk.Toplevel):
         self._tab_engine(nb)
         self._tab_volume(nb)
         self._tab_commands(nb)
+        self._tab_context(nb)
 
         # Status bar
         self._status = tk.Label(self, text="", bg=BG, fg=GRN,
