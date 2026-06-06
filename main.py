@@ -332,6 +332,84 @@ def _quit_app() -> None:
 _root_ref: tk.Tk | None = None   # set inside main() so tray callbacks can reach it
 
 
+# ── Status overlay ─────────────────────────────────────────────────────────────
+
+class StatusOverlay:
+    """Small always-on-top HUD that briefly shows what the engine just did."""
+
+    def __init__(self, root: tk.Tk):
+        self._root     = root
+        self._win      = None
+        self._label    = None
+        self._after_id = None
+
+    def show(self, text: str) -> None:
+        """Display text for 2 s (or until the next command). Thread-safe."""
+        if not user_config.get_overlay_enabled():
+            return
+        if self._after_id:
+            self._root.after_cancel(self._after_id)
+            self._after_id = None
+        if self._win is None or not self._win.winfo_exists():
+            self._build()
+        self._label.config(text=f"🎙  {text}")
+        self._reposition()
+        self._win.deiconify()
+        self._win.lift()
+        self._win.attributes("-topmost", True)
+        self._after_id = self._root.after(2000, self._hide)
+
+    def _hide(self) -> None:
+        self._after_id = None
+        if self._win and self._win.winfo_exists():
+            self._win.withdraw()
+
+    def _build(self) -> None:
+        self._win = tk.Toplevel(self._root)
+        self._win.overrideredirect(True)        # no title bar or borders
+        self._win.attributes("-topmost", True)
+        self._win.attributes("-alpha", 0.90)
+        self._win.configure(bg="#313244")
+        self._win.withdraw()
+        # Thin coloured border effect via nested frames
+        outer = tk.Frame(self._win, bg="#7c6af7", padx=2, pady=2)
+        outer.pack()
+        inner = tk.Frame(outer, bg="#1e1e2e", padx=20, pady=10)
+        inner.pack()
+        self._label = tk.Label(
+            inner, text="", bg="#1e1e2e", fg="#cdd6f4",
+            font=("Segoe UI Semibold", 12),
+        )
+        self._label.pack()
+        # Click anywhere on the overlay to dismiss early
+        for w in (self._win, outer, inner, self._label):
+            w.bind("<Button-1>", lambda _e: self._hide())
+
+    def _reposition(self) -> None:
+        self._win.update_idletasks()
+        sw  = self._root.winfo_screenwidth()
+        sh  = self._root.winfo_screenheight()
+        ow  = self._win.winfo_reqwidth()
+        oh  = self._win.winfo_reqheight()
+        pad = 24
+        tb  = 56   # approximate taskbar height
+
+        pos = user_config.get_overlay_position()
+        options = {
+            "top-left":      (pad,            pad),
+            "top-center":    ((sw-ow)//2,     pad),
+            "top-right":     (sw-ow-pad,      pad),
+            "bottom-left":   (pad,            sh-oh-tb),
+            "bottom-center": ((sw-ow)//2,     sh-oh-tb),
+            "bottom-right":  (sw-ow-pad,      sh-oh-tb),
+        }
+        x, y = options.get(pos, options["bottom-right"])
+        self._win.geometry(f"+{x}+{y}")
+
+
+_overlay: StatusOverlay | None = None
+
+
 # ── Main window ───────────────────────────────────────────────────────────────
 
 def main():
