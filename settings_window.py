@@ -165,19 +165,20 @@ class SettingsWindow(tk.Toplevel):
         # Confidence threshold
         _lbl(card, "Confidence threshold  (how sure it must be before acting)").grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        self._conf_var = tk.IntVar()
-        conf_spin = _spin(card, 1, 100, self._conf_var)
-        conf_spin.grid(row=1, column=0, sticky="w")
+        self._conf_spin = _spin(card, 1, 100, tk.IntVar())
+        self._conf_spin.grid(row=1, column=0, sticky="w")
         _lbl(card, "%", fg=MUTED).grid(row=1, column=1, sticky="w", padx=(4, 20))
         self._conf_note = _lbl(card, "", fg=MUTED)
         self._conf_note.grid(row=1, column=2, sticky="w")
-        self._conf_var.trace_add("write", self._on_conf_change)
+        self._conf_spin.bind("<KeyRelease>", self._on_conf_change)
+        self._conf_spin.bind("<<Increment>>", self._on_conf_change)
+        self._conf_spin.bind("<<Decrement>>", self._on_conf_change)
 
         # Cooldown
         _lbl(card, "Cooldown  (ignore repeated command within this window)").grid(
             row=2, column=0, columnspan=3, sticky="w", pady=(12, 2))
-        self._cooldown_var = tk.DoubleVar()
-        _spin(card, 0.0, 10.0, self._cooldown_var).grid(row=3, column=0, sticky="w")
+        self._cooldown_spin = _spin(card, 0.0, 10.0, tk.DoubleVar(), width=7)
+        self._cooldown_spin.grid(row=3, column=0, sticky="w")
         _lbl(card, "seconds", fg=MUTED).grid(row=3, column=1, sticky="w", padx=(4, 0))
 
         # Close delay
@@ -187,8 +188,8 @@ class SettingsWindow(tk.Toplevel):
         card2.pack(fill="x")
         _lbl(card2, "How long to wait before actually closing an app  (say 'undo' to cancel)").grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 2))
-        self._delay_var = tk.IntVar()
-        _spin(card2, 1, 60, self._delay_var).grid(row=1, column=0, sticky="w")
+        self._delay_spin = _spin(card2, 1, 60, tk.IntVar())
+        self._delay_spin.grid(row=1, column=0, sticky="w")
         _lbl(card2, "seconds", fg=MUTED).grid(row=1, column=1, sticky="w", padx=(4, 0))
 
         # Save button
