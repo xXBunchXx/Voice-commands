@@ -1,12 +1,11 @@
 """
 VoiceCommands — main launcher.
-Handles: update checking, model path setup, start/stop voice engine,
-and opening the App Manager.
 """
 import os
 import sys
 import pathlib
 import subprocess
+import ssl
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -19,13 +18,33 @@ VERSION = "1.0.0"
 GITHUB_RAW     = "https://raw.githubusercontent.com/xXBunchXx/voice-commands/master/"
 GITHUB_EXE_URL = "https://github.com/xXBunchXx/voice-commands/releases/latest/download/VoiceCommands.exe"
 
+# ── SSL context (PyInstaller doesn't bundle certs) ────────────────────────────
+
+def _ssl_ctx():
+    """Return an SSL context that works both frozen and in dev."""
+    ctx = ssl.create_default_context()
+    try:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        # certifi not available — disable verification as a fallback
+        ctx.check_hostname = False
+        ctx.verify_mode    = ssl.CERT_NONE
+    return ctx
+
+
+def _urlopen(url: str, timeout: int = 6):
+    return urllib.request.urlopen(url, context=_ssl_ctx(), timeout=timeout)
+
+
 # ── Update helpers ─────────────────────────────────────────────────────────────
 
 def _fetch_latest_version() -> str | None:
     try:
-        with urllib.request.urlopen(GITHUB_RAW + "version.txt", timeout=5) as r:
+        with _urlopen(GITHUB_RAW + "version.txt") as r:
             return r.read().decode().strip()
-    except Exception:
+    except Exception as e:
+        print(f"Update check error: {e}")
         return None
 
 
@@ -33,13 +52,13 @@ def _version_tuple(v: str) -> tuple:
     return tuple(int(x) for x in v.split("."))
 
 
-def _do_update(parent: tk.Tk, status_var: tk.StringVar) -> None:
+def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
     exe_path = pathlib.Path(sys.executable)
     new_exe  = exe_path.with_name("VoiceCommands_new.exe")
 
     def _download():
         try:
-            parent.after(0, lambda: status_var.set("Downloading update…"))
+            root.after(0, lambda: status_var.set("Downloading update…"))
             urllib.request.urlretrieve(GITHUB_EXE_URL, new_exe)
             bat = exe_path.with_name("_vc_updater.bat")
             bat.write_text(
@@ -50,37 +69,61 @@ def _do_update(parent: tk.Tk, status_var: tk.StringVar) -> None:
             )
             subprocess.Popen(["cmd", "/c", str(bat)],
                              creationflags=subprocess.CREATE_NO_WINDOW)
-            parent.after(0, parent.destroy)
+            root.after(0, root.destroy)
         except Exception as e:
-            parent.after(0, lambda: messagebox.showerror(
-                "Update failed", str(e), parent=parent))
-            parent.after(0, lambda: status_var.set("○ Stopped"))
+            root.after(0, lambda: messagebox.showerror("Update failed", str(e), parent=root))
+            root.after(0, lambda: status_var.set("○ Stopped"))
 
     threading.Thread(target=_download, daemon=True).start()
 
 
-# ── Voice engine thread ────────────────────────────────────────────────────────
+# ── Voice engine ───────────────────────────────────────────────────────────────
 
+_stop_event    = threading.Event()
 _engine_thread: threading.Thread | None = None
 
 
-def _run_engine():
-    import voice_controls  # noqa: F401 — runs its own blocking loop
+def _engine_loop(stop_event: threading.Event, root: tk.Tk,
+                 status_var: tk.StringVar, b_start: tk.Button, b_stop: tk.Button):
+    """Runs in a background thread. Handles restart requests automatically."""
+    import voice_controls
+    while True:
+        stop_event.clear()
+        wants_restart = voice_controls.run(stop_event)
+        if not wants_restart:
+            break
+        print("Restarting engine…")
+    # Engine stopped — update UI from the main thread
+    root.after(0, lambda: _ui_stopped(status_var, b_start, b_stop))
 
 
-def _start_engine(status_var, b_start, b_stop, model_row):
-    global _engine_thread
+def _ui_stopped(status_var, b_start, b_stop):
+    status_var.set("○ Stopped")
+    b_start.config(state="normal")
+    b_stop.config(state="disabled")
+
+
+def _start_engine(root, status_var, b_start, b_stop, path_lbl):
+    global _stop_event, _engine_thread
     if _engine_thread and _engine_thread.is_alive():
         return
-    # Validate model path before starting
-    if not pathlib.Path(user_config.get_model_path()).is_dir():
+
+    model_path = user_config.get_model_path()
+    if not pathlib.Path(model_path).is_dir():
         messagebox.showerror(
             "Model not found",
-            f"Could not find the Vosk model at:\n{user_config.get_model_path()}\n\n"
-            "Use the 'Set Model Path' button to point to your model folder.",
+            f"Could not find the Vosk model at:\n{model_path}\n\n"
+            "Use the Browse… button to point to your model folder.",
+            parent=root,
         )
         return
-    _engine_thread = threading.Thread(target=_run_engine, daemon=True)
+
+    _stop_event = threading.Event()
+    _engine_thread = threading.Thread(
+        target=_engine_loop,
+        args=(_stop_event, root, status_var, b_start, b_stop),
+        daemon=True,
+    )
     _engine_thread.start()
     status_var.set("● Running")
     b_start.config(state="disabled")
@@ -88,29 +131,61 @@ def _start_engine(status_var, b_start, b_stop, model_row):
 
 
 def _stop_engine(status_var, b_start, b_stop):
-    status_var.set("○ Stopped")
-    b_start.config(state="normal")
-    b_stop.config(state="disabled")
+    _stop_event.set()
+    _ui_stopped(status_var, b_start, b_stop)
 
 
-# ── Model path picker (inline, no blocking popup on launch) ───────────────────
+# ── App Manager ────────────────────────────────────────────────────────────────
 
-def _pick_model(model_var: tk.StringVar):
-    chosen = filedialog.askdirectory(title="Select Vosk model folder")
-    if chosen:
-        user_config.set_model_path(chosen)
-        model_var.set(chosen)
+def _open_manager(root: tk.Tk):
+    """Open the App Manager as a child Toplevel of the main window."""
+    from manage_apps import AppManagerWindow
+    win = AppManagerWindow(root)
+    win.grab_set()   # make it modal
+    win.focus_set()
+
+
+# ── Update check UI ────────────────────────────────────────────────────────────
+
+def _check_updates_ui(root, status_var):
+    status_var.set("Checking for updates…")
+    root.update()
+
+    latest = _fetch_latest_version()
+    if latest is None:
+        messagebox.showinfo(
+            "Update check failed",
+            "Could not reach GitHub.\n\nCheck your internet connection.",
+            parent=root,
+        )
+        status_var.set("○ Stopped")
+        return
+
+    if _version_tuple(latest) > _version_tuple(VERSION):
+        if messagebox.askyesno(
+            "Update available",
+            f"Version {latest} is available (you have {VERSION}).\n\nInstall now?",
+            parent=root,
+        ):
+            _do_update(root, status_var)
+        else:
+            status_var.set("○ Stopped")
+    else:
+        messagebox.showinfo("Up to date",
+                            f"You're on the latest version ({VERSION}).",
+                            parent=root)
+        status_var.set("○ Stopped")
 
 
 # ── Main window ───────────────────────────────────────────────────────────────
 
-def _build_window():
-    BG   = "#1e1e2e"
-    CARD = "#2a2a3e"
-    ACC  = "#7c6af7"
-    FG   = "#cdd6f4"
-    GRN  = "#a6e3a1"
-    RED  = "#f38ba8"
+def main():
+    BG    = "#1e1e2e"
+    CARD  = "#2a2a3e"
+    ACC   = "#7c6af7"
+    FG    = "#cdd6f4"
+    GRN   = "#a6e3a1"
+    RED   = "#f38ba8"
     MUTED = "#585b70"
 
     root = tk.Tk()
@@ -118,7 +193,7 @@ def _build_window():
     root.configure(bg=BG)
     root.resizable(False, False)
 
-    def btn(parent, text, cmd, color=ACC, state="normal", width=22):
+    def mkbtn(parent, text, cmd, color=ACC, state="normal", width=22):
         return tk.Button(parent, text=text, command=cmd,
                          bg=color, fg="#ffffff", activebackground=color,
                          activeforeground="#ffffff", relief="flat",
@@ -126,7 +201,7 @@ def _build_window():
                          padx=14, pady=7, cursor="hand2", bd=0,
                          state=state, width=width)
 
-    # ── Header ────────────────────────────────────────────────────────────────
+    # Header
     hdr = tk.Frame(root, bg=ACC, pady=10)
     hdr.pack(fill="x")
     tk.Label(hdr, text="🎙  Voice Commands", bg=ACC, fg="#ffffff",
@@ -134,112 +209,72 @@ def _build_window():
     tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#c8b8ff",
              font=("Segoe UI", 9)).pack()
 
-    # ── Status ────────────────────────────────────────────────────────────────
+    # Status
     card = tk.Frame(root, bg=CARD, padx=20, pady=14)
     card.pack(fill="x", padx=16, pady=(14, 0))
     status_var = tk.StringVar(value="○ Stopped")
     tk.Label(card, textvariable=status_var, bg=CARD, fg=GRN,
              font=("Segoe UI Semibold", 13)).pack()
 
-    # ── Engine buttons ────────────────────────────────────────────────────────
+    # Buttons (defined in two steps so lambdas can reference each other)
     btns = tk.Frame(root, bg=BG, pady=4)
     btns.pack(fill="x", padx=16)
 
-    b_start = btn(btns, "▶  Start Voice Commands", lambda: None)
-    b_stop  = btn(btns, "■  Stop Voice Commands",
-                  lambda: _stop_engine(status_var, b_start, b_stop),
-                  color=MUTED, state="disabled")
+    b_start = mkbtn(btns, "▶  Start Voice Commands", lambda: None)
+    b_stop  = mkbtn(btns, "■  Stop Voice Commands",
+                    lambda: _stop_engine(status_var, b_start, b_stop),
+                    color=MUTED, state="disabled")
 
-    # Wire start after both buttons exist
-    b_start.config(command=lambda: _start_engine(
-        status_var, b_start, b_stop, model_row))
-
-    b_apps = btn(btns, "⚙  Manage Apps", _open_manager)
-    b_upd  = btn(btns, "🔄  Check for Updates",
-                 lambda: _check_updates_ui(root, status_var), color="#45475a")
-
-    for b in (b_start, b_stop, b_apps, b_upd):
-        b.pack(pady=3, fill="x")
-
-    # ── Model path row ────────────────────────────────────────────────────────
+    # Model path row — defined before b_start.config so path_lbl exists
     model_row = tk.Frame(root, bg=CARD, padx=12, pady=8)
     model_row.pack(fill="x", padx=16, pady=(10, 0))
-
     tk.Label(model_row, text="Vosk model path:", bg=CARD, fg=FG,
              font=("Segoe UI", 9)).pack(anchor="w")
-
     path_row = tk.Frame(model_row, bg=CARD)
     path_row.pack(fill="x", pady=(3, 0))
 
     model_var = tk.StringVar(value=user_config.get_model_path())
-
-    # Colour the path label red if the folder doesn't exist
-    path_colour = GRN if pathlib.Path(model_var.get()).is_dir() else RED
-    path_lbl = tk.Label(path_row, textvariable=model_var, bg=CARD,
-                        fg=path_colour, font=("Consolas", 8),
-                        anchor="w", wraplength=320, justify="left")
+    exists     = pathlib.Path(model_var.get()).is_dir()
+    path_lbl   = tk.Label(path_row, textvariable=model_var, bg=CARD,
+                          fg=GRN if exists else RED,
+                          font=("Consolas", 8), anchor="w",
+                          wraplength=310, justify="left")
     path_lbl.pack(side="left", fill="x", expand=True)
 
-    def _on_pick():
-        _pick_model(model_var)
-        exists = pathlib.Path(model_var.get()).is_dir()
-        path_lbl.config(fg=GRN if exists else RED)
+    def _pick_model():
+        chosen = filedialog.askdirectory(title="Select Vosk model folder", parent=root)
+        if chosen:
+            user_config.set_model_path(chosen)
+            model_var.set(chosen)
+            path_lbl.config(fg=GRN if pathlib.Path(chosen).is_dir() else RED)
 
-    btn(path_row, "Browse…", _on_pick, color="#45475a", width=8).pack(
+    mkbtn(path_row, "Browse…", _pick_model, color=MUTED, width=8).pack(
         side="right", padx=(6, 0))
 
-    # ── Footer ────────────────────────────────────────────────────────────────
-    tk.Label(root,
-             text=f"Config: {user_config.config_path()}",
+    # Wire start button now that path_lbl exists
+    b_start.config(command=lambda: _start_engine(
+        root, status_var, b_start, b_stop, path_lbl))
+
+    b_apps = mkbtn(btns, "⚙  Manage Apps", lambda: _open_manager(root))
+    b_upd  = mkbtn(btns, "🔄  Check for Updates",
+                   lambda: _check_updates_ui(root, status_var), color=MUTED)
+
+    for b in (b_start, b_stop, b_apps, b_upd):
+        b.pack(pady=3, fill="x")
+
+    # Footer
+    tk.Label(root, text=f"Config: {user_config.config_path()}",
              bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
         fill="x", padx=16, pady=(8, 10))
 
-    return root, status_var
-
-
-def _open_manager():
-    from manage_apps import AppManagerWindow
-    AppManagerWindow(master=None).run()
-
-
-def _check_updates_ui(parent, status_var):
-    status_var.set("Checking for updates…")
-    parent.update()
-    latest = _fetch_latest_version()
-    if latest is None:
-        messagebox.showinfo("Update check",
-                            "Could not reach GitHub. Check your connection.",
-                            parent=parent)
-        status_var.set("○ Stopped")
-        return
-    if _version_tuple(latest) > _version_tuple(VERSION):
-        if messagebox.askyesno(
-            "Update available",
-            f"Version {latest} is available (you have {VERSION}).\n\nInstall now?",
-            parent=parent,
-        ):
-            _do_update(parent, status_var)
-        else:
-            status_var.set("○ Stopped")
-    else:
-        messagebox.showinfo("Up to date",
-                            f"You're on the latest version ({VERSION}).",
-                            parent=parent)
-        status_var.set("○ Stopped")
-
-
-# ── Entry point ───────────────────────────────────────────────────────────────
-
-def main():
-    root, status_var = _build_window()
-
-    # Silent background update check
+    # Silent background update notification
     def _bg_check():
         latest = _fetch_latest_version()
         if latest and _version_tuple(latest) > _version_tuple(VERSION):
             root.after(0, lambda: status_var.set(f"⬆  Update {latest} available!"))
 
     threading.Thread(target=_bg_check, daemon=True).start()
+
     root.mainloop()
 
 
