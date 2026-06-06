@@ -635,51 +635,78 @@ def handle_command(text: str) -> None:
             print("  Say 'close' followed by an app name")
 
 
-# ── VOSK SETUP ───────────────────────────────────────────────────────────
-print("Loading model...")
-model = Model(MODEL_PATH)
-rec = KaldiRecognizer(model, SAMPLE_RATE)
-rec.SetGrammar(build_grammar())
-rec.SetWords(True)
+# ── ENGINE ───────────────────────────────────────────────────────────────
+import threading as _threading
 
-print_diagnostic()
+_stop_event     = _threading.Event()
+_restart_requested = False
 
-p = pyaudio.PyAudio()
-stream = p.open(
-    format=pyaudio.paInt16,
-    channels=1,
-    rate=SAMPLE_RATE,
-    input=True,
-    frames_per_buffer=FRAMES_PER_BUFFER,
-)
-stream.start_stream()
 
-print("Listening... Press Ctrl+C to quit.")
-print(f"Confidence threshold: {CONFIDENCE_THRESHOLD:.0%}")
-print("Say 'diagnose' at any time to recheck running apps.\n")
+def run(stop_event: _threading.Event | None = None) -> bool:
+    """Start the voice engine.  Returns True if a restart was requested."""
+    global APPS, PROC_NAMES, MODEL_PATH, _stop_event, _restart_requested
 
-try:
-    while True:
-        data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
-        if rec.AcceptWaveform(data):
-            result = json.loads(rec.Result())
-            text = result.get("text", "").strip().lower()
-            if not text:
-                continue
-            conf = average_confidence(result)
-            if conf >= CONFIDENCE_THRESHOLD:
-                handle_command(text)
+    # Reload config fresh every time so newly set model paths / app entries work
+    _cfg       = user_config.load()
+    MODEL_PATH = user_config.get_model_path()
+    APPS       = _cfg.get("APPS", APPS)
+    PROC_NAMES = _cfg.get("PROC_NAMES", PROC_NAMES)
+
+    if stop_event is None:
+        stop_event = _threading.Event()
+    _stop_event        = stop_event
+    _restart_requested = False
+
+    print("Loading model...")
+    model = Model(MODEL_PATH)
+    rec   = KaldiRecognizer(model, SAMPLE_RATE)
+    rec.SetGrammar(build_grammar())
+    rec.SetWords(True)
+
+    print_diagnostic()
+
+    p = pyaudio.PyAudio()
+    stream = p.open(
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=SAMPLE_RATE,
+        input=True,
+        frames_per_buffer=FRAMES_PER_BUFFER,
+    )
+    stream.start_stream()
+
+    print("Listening...")
+    print(f"Confidence threshold: {CONFIDENCE_THRESHOLD:.0%}")
+    print("Say 'diagnose' at any time to recheck running apps.\n")
+
+    try:
+        while not stop_event.is_set():
+            data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
+            if rec.AcceptWaveform(data):
+                result = json.loads(rec.Result())
+                text   = result.get("text", "").strip().lower()
+                if not text:
+                    continue
+                conf = average_confidence(result)
+                if conf >= CONFIDENCE_THRESHOLD:
+                    handle_command(text)
+                else:
+                    print(f"💤  Low confidence ({conf:.0%}): '{text}' — ignored")
             else:
-                print(f"💤  Low confidence ({conf:.0%}): '{text}' — ignored")
-        else:
-            partial = json.loads(rec.PartialResult())
-            text = partial.get("partial", "").strip().lower()
-            if text:
-                print(f"👂  Hearing: '{text}'")
+                partial = json.loads(rec.PartialResult())
+                text    = partial.get("partial", "").strip().lower()
+                if text:
+                    print(f"👂  Hearing: '{text}'")
+    except KeyboardInterrupt:
+        print("\nStopped.")
+    finally:
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
 
-except KeyboardInterrupt:
-    print("\nStopped.")
-finally:
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+    return _restart_requested
+
+
+if __name__ == "__main__":
+    while run():          # loop handles "restart voice commands"
+        print("Restarting...\n")
