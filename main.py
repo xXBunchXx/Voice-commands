@@ -434,10 +434,12 @@ def main():
 
     root.after(100, _poll_log)
 
-    # Footer
-    tk.Label(root, text=f"Config: {user_config.config_path()}",
-             bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
-        fill="x", padx=16, pady=(6, 8))
+    # Footer row: config path + close button
+    footer = tk.Frame(root, bg=BG)
+    footer.pack(fill="x", padx=16, pady=(6, 8))
+    tk.Label(footer, text=f"Config: {user_config.config_path()}",
+             bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(side="left")
+    mkbtn(footer, "✕  Close App", _quit_app, color=RED, width=14).pack(side="right")
 
     # Log startup info
     _log_queue.put(f"Voice Commands v{VERSION} started\n")
