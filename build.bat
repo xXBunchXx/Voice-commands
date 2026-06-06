@@ -39,7 +39,7 @@ xcopy /E /I /Y "vosk-model-small-en-us-0.15" "dist\vosk-model-small-en-us-0.15"
 
 echo.
 echo Zipping dist\ into VoiceCommands.zip ...
-powershell -Command "Compress-Archive -Path 'dist\*' -DestinationPath 'VoiceCommands.zip' -Force"
+powershell -NoProfile -Command "$src = Resolve-Path 'dist'; Add-Type -Assembly System.IO.Compression.FileSystem; if (Test-Path 'VoiceCommands.zip') { Remove-Item 'VoiceCommands.zip' }; [System.IO.Compression.ZipFile]::CreateFromDirectory($src, (Resolve-Path '.').Path + '\VoiceCommands.zip')"
 
 :: Read new version for commit message
 for /f "tokens=*" %%v in (version.txt) do set NEW_VER=%%v
