@@ -9,13 +9,7 @@ pip install pyinstaller certifi pystray pillow >nul 2>&1
 
 :: ── Auto-increment patch version ─────────────────────────────────────────────
 echo Auto-incrementing version...
-powershell -NoProfile -Command ^
-  "$v = (Get-Content version.txt).Trim(); ^
-   $parts = $v -split '\.'; ^
-   $parts[2] = [int]$parts[2] + 1; ^
-   $newv = $parts -join '.'; ^
-   Set-Content version.txt $newv; ^
-   Write-Host ('Version: ' + $v + ' -> ' + $newv)"
+powershell -NoProfile -Command "$v=(Get-Content version.txt).Trim();$p=$v-split'\.';$p[2]=[int]$p[2]+1;$n=$p-join'.';Set-Content version.txt $n;Write-Host('Version: '+$v+' -> '+$n)"
 
 pyinstaller ^
   --onefile ^
