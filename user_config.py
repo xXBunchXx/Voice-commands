@@ -329,7 +329,7 @@ def _schema_defaults() -> dict:
         "VOLUME_STEPS":         DEFAULT_VOLUME_STEPS.copy(),
         "CONTEXT_COMMANDS":     {},   # empty = use all defaults
         "OVERLAY_ENABLED":      True,
-        "OVERLAY_POSITION":     "bottom-right",
+        "OVERLAY_POSITION":     "near cursor",
     }
 
 
