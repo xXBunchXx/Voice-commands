@@ -203,12 +203,15 @@ class ScanDialog(tk.Toplevel):
         self._results = results
         self._visible = results
         self._vars = []
+        self._name_vars = []
         existing = set(user_config.get_apps().keys())
         for r in results:
             v = tk.BooleanVar(value=False)
             v.trace_add("write", self._update_count)
             self._vars.append(v)
-            self._make_row(self._inner, r, v, r["name"] in existing)
+            nv = tk.StringVar(value=r["name"])
+            self._name_vars.append(nv)
+            self._make_row(self._inner, r, v, nv, r["name"] in existing)
         self._status.config(text=f"Found {len(results)} apps")
         self._add_btn.config(state="normal")
         self._update_count()
