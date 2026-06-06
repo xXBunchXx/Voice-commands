@@ -16,6 +16,7 @@ from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from vosk import Model, KaldiRecognizer
+import user_config
 
 sys.stdout.reconfigure(encoding='utf-8')
 # Make the process DPI-aware so all Win32 coordinate calls use physical pixels
