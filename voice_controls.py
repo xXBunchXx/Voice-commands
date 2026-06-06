@@ -871,6 +871,7 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     COOLDOWN             = user_config.get_cooldown()
     _COMMAND_WORDS       = user_config.get_command_words()
     _VOLUME_STEPS        = user_config.get_volume_steps()
+    _CONTEXT_COMMANDS    = user_config.get_context_commands()
 
     if stop_event is None:
         stop_event = _threading.Event()
