@@ -411,6 +411,27 @@ def main():
     mkbtn(path_row, "Browse…", _pick_model, color=MUTED, width=8).pack(
         side="right", padx=(6, 0))
 
+    # Close delay row
+    delay_row = tk.Frame(root, bg=CARD, padx=12, pady=8)
+    delay_row.pack(fill="x", padx=16, pady=(4, 0))
+    tk.Label(delay_row, text="Close-app undo window:", bg=CARD, fg=FG,
+             font=("Segoe UI", 9)).pack(side="left")
+    delay_var = tk.IntVar(value=user_config.get_close_delay())
+    delay_spin = tk.Spinbox(delay_row, from_=1, to=30, textvariable=delay_var,
+                            width=4, bg="#313244", fg=FG, buttonbackground=CARD,
+                            relief="flat", font=("Segoe UI", 10),
+                            insertbackground=FG)
+    delay_spin.pack(side="left", padx=(8, 4))
+    tk.Label(delay_row, text="seconds", bg=CARD, fg=FG,
+             font=("Segoe UI", 9)).pack(side="left")
+
+    def _save_delay(*_):
+        try:
+            user_config.set_close_delay(delay_var.get())
+        except Exception:
+            pass
+    delay_var.trace_add("write", _save_delay)
+
     # Debug log panel
     debug_frame = tk.Frame(root, bg=BG)
     debug_frame.pack(fill="both", expand=True, padx=16, pady=(10, 0))
