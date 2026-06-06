@@ -1,6 +1,7 @@
 """
 VoiceCommands — main launcher.
 """
+import io
 import os
 import sys
 import pathlib
@@ -9,8 +10,9 @@ import subprocess
 import ssl
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 import urllib.request
+import zipfile
 
 import user_config
 
@@ -18,6 +20,9 @@ VERSION = "1.0.0"
 
 GITHUB_RAW     = "https://raw.githubusercontent.com/xXBunchXx/Voice-commands/main/"
 GITHUB_EXE_URL = "https://github.com/xXBunchXx/Voice-commands/raw/main/dist/VoiceCommands.exe"
+
+MODEL_NAME     = "vosk-model-small-en-us-0.15"
+MODEL_ZIP_URL  = f"https://alphacephei.com/vosk/models/{MODEL_NAME}.zip"
 
 # ── Log queue — voice engine writes here, UI reads it ─────────────────────────
 
