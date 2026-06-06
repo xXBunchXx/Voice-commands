@@ -190,19 +190,29 @@ class SettingsWindow(tk.Toplevel):
         card.pack(fill="x")
 
         ACTIONS = [
+            # ── App control prefixes ──────────────────────────────────────────
+            ("open",           "Prefix: open app  (e.g. 'open firefox')"),
+            ("close",          "Prefix: close app  (e.g. 'close firefox')"),
+            ("minimise",       "Prefix: minimise app"),
+            ("maximise",       "Prefix: maximise app"),
+            ("move",           "Prefix: snap/move app  (e.g. 'move firefox left')"),
+            ("merge",          "Merge Explorer windows into tabs"),
+            ("minimise_all",   "Minimise all windows  (uses open/minimise prefix)"),
+            ("open_all",       "Show all windows  (uses open prefix)"),
+            # ── Media ─────────────────────────────────────────────────────────
             ("skip",           "Skip track"),
             ("previous",       "Previous track"),
             ("rewind",         "Restart current track"),
             ("play_pause",     "Play / Pause"),
             ("mute",           "Toggle mute"),
+            # ── Keyboard ─────────────────────────────────────────────────────
             ("copy",           "Copy  (Ctrl+C)"),
             ("paste",          "Paste  (Ctrl+V)"),
             ("save",           "Save  (Ctrl+S)"),
             ("enter",          "Press Enter"),
+            # ── Engine ───────────────────────────────────────────────────────
             ("undo",           "Undo close"),
             ("diagnose",       "Run diagnostic"),
-            ("minimise_all",   "Minimise all windows"),
-            ("open_all",       "Show all windows"),
             ("stop_engine",    "Stop voice commands"),
             ("restart_engine", "Restart voice commands"),
         ]
