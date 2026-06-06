@@ -44,7 +44,7 @@ DEFAULT_PROC_NAMES: dict[str, str] = {
     "spotify":  "spotify.exe",
     "discord":  "discord.exe",
     "command":  "cmd.exe",
-    "settings": "ms-settings:",
+    "settings": "SystemSettings.exe",
 }
 
 # ── Public API ────────────────────────────────────────────────────────────────
