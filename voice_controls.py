@@ -307,6 +307,7 @@ def snap_app(app_name: str | None, position: str) -> None:
     _apply_snap(hwnd, position)
     label = app_name or "current window"
     print(f"🗗  Snapped {label} to {position}!")
+    _status(f"Moved {label} → {position}")
 # ─────────────────────────────────────────────────────────────────────────
 
 # ── PROCESS CACHE ────────────────────────────────────────────────────────
