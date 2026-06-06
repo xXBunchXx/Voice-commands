@@ -123,7 +123,7 @@ class SettingsWindow(tk.Toplevel):
         self.configure(bg=BG)
         self.resizable(True, True)
         self._build_ui()
-        self._load()
+        self.after(100, self._load)   # defer so widgets are fully rendered first
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
