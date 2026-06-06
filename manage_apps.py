@@ -121,6 +121,7 @@ def _scan_registry() -> list[dict]:
             except Exception:
                 continue
 
+    results += _builtin_apps()
     results.sort(key=lambda x: x["display"].lower())
     return results
 
