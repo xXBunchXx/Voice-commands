@@ -10,6 +10,37 @@ from tkinter import ttk, messagebox, filedialog
 import user_config
 
 
+# ── Built-in Windows apps ─────────────────────────────────────────────────────
+
+_BUILTIN_APPS = [
+    ("Notepad",          "notepad.exe",                          "notepad.exe"),
+    ("Command Prompt",   r"C:\Windows\System32\cmd.exe",         "cmd.exe"),
+    ("PowerShell",       r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe", "powershell.exe"),
+    ("Windows Terminal", "wt.exe",                               "WindowsTerminal.exe"),
+    ("File Explorer",    r"C:\Windows\explorer.exe",             "explorer.exe"),
+    ("Settings",         "ms-settings:",                         "ms-settings:"),
+    ("Calculator",       r"C:\Windows\System32\calc.exe",        "Calculator.exe"),
+    ("Paint",            r"C:\Windows\System32\mspaint.exe",     "mspaint.exe"),
+    ("Snipping Tool",    r"C:\Windows\System32\SnippingTool.exe","SnippingTool.exe"),
+    ("Task Manager",     r"C:\Windows\System32\Taskmgr.exe",     "Taskmgr.exe"),
+    ("WordPad",          r"C:\Program Files\Windows NT\Accessories\wordpad.exe", "wordpad.exe"),
+    ("Control Panel",    r"C:\Windows\System32\control.exe",     "control.exe"),
+    ("Registry Editor",  r"C:\Windows\regedit.exe",              "regedit.exe"),
+    ("Character Map",    r"C:\Windows\System32\charmap.exe",     "charmap.exe"),
+    ("Disk Cleanup",     r"C:\Windows\System32\cleanmgr.exe",    "cleanmgr.exe"),
+    ("On-Screen Keyboard", r"C:\Windows\System32\osk.exe",       "osk.exe"),
+]
+
+
+def _builtin_apps() -> list[dict]:
+    results = []
+    for display, path, proc in _BUILTIN_APPS:
+        voice_name = _to_voice_name(display)
+        results.append({"display": f"{display}  (built-in)",
+                         "name": voice_name, "path": path, "proc": proc})
+    return results
+
+
 # ── Registry scanner ──────────────────────────────────────────────────────────
 
 def _scan_registry() -> list[dict]:
