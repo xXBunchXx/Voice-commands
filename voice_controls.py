@@ -34,7 +34,7 @@ except Exception:
 # APPS and PROC_NAMES are loaded from the user's local config file so that
 # each machine keeps its own entries and updates never wipe them.
 _cfg        = user_config.load()
-MODEL_PATH  = _cfg.get("MODEL_PATH", r"C:\VoiceCommands\vosk-model-small-en-us-0.15")
+MODEL_PATH  = _cfg.get("MODEL_PATH", r"C:\Echo\vosk-model-small-en-us-0.15")
 APPS        = _cfg.get("APPS", {})
 PROC_NAMES  = _cfg.get("PROC_NAMES", {})
 
