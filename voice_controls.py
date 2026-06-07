@@ -753,6 +753,12 @@ def build_grammar() -> str:
         words.extend(_cw_all(key))
     words.append("play")   # permanent extra alias for play_pause
 
+    # "play <app>" — focus that app then resume playback
+    _play_words = list(dict.fromkeys(_cw_all("play_pause") + ["play"]))
+    for pw in _play_words:
+        for app in APPS:
+            words.append(f"{pw} {app}")
+
     # Prefix commands — cross-product of every alias with every app / position
     for ow in _cw_all("open"):
         words.append(ow)
