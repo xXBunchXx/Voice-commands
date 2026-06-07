@@ -702,17 +702,55 @@ class AppManagerWidget(tk.Frame):
             self.e_rename.delete(0, "end")
 
     def _show_preview(self, name: str):
-        path   = self._apps.get(name, "—")
-        proc   = self._procs.get(name, "—")
+        """Populate the edit fields from the selected app."""
+        path   = self._apps.get(name, "")
+        proc   = self._procs.get(name, "")
         spoken = user_config.get_spoken_names().get(name, "")
-        spoken_line = f"\n  Say  : \"{spoken}\"" if spoken else ""
-        self.preview.config(text=f"  Path : {path}\n  Proc : {proc}{spoken_line}")
+        for e, val in ((self.e_edit_path, path),
+                       (self.e_edit_proc, proc),
+                       (self.e_edit_spoken, spoken)):
+            e.delete(0, "end")
+            e.insert(0, val)
 
     def _on_select(self, _=None):
         name = self.combo_var.get()
         self._show_preview(name)
         self.e_rename.delete(0, "end")
         self.e_rename.insert(0, name)
+
+    def _browse_edit_exe(self):
+        """Browse for a new exe for the selected entry."""
+        path = filedialog.askopenfilename(
+            title="Select application executable",
+            filetypes=[("Executables", "*.exe"), ("All files", "*.*")],
+            parent=self.winfo_toplevel(),
+        )
+        if not path:
+            return
+        p = pathlib.Path(path)
+        self.e_edit_path.delete(0, "end"); self.e_edit_path.insert(0, str(p))
+        self.e_edit_proc.delete(0, "end"); self.e_edit_proc.insert(0, p.name)
+
+    def _on_save_edit(self):
+        """Save edited path, proc and spoken name for the selected entry."""
+        name   = self.combo_var.get()
+        path   = self.e_edit_path.get().strip()
+        proc   = self.e_edit_proc.get().strip()
+        spoken = self.e_edit_spoken.get().strip().lower()
+        if not name:
+            return
+        if not path or not proc:
+            messagebox.showwarning("Missing fields",
+                                   "Path and Process name cannot be empty.",
+                                   parent=self.winfo_toplevel())
+            return
+        user_config.add_entry(name, path, proc)
+        user_config.set_spoken_name(name, spoken)
+        self._reload()
+        self.combo.set(name)
+        self._show_preview(name)
+        note = f'  (say "{spoken}")' if spoken else ""
+        self._flash(f'✓  Updated "{name}"{note}.')
 
     def _flash(self, msg: str, color=GRN):
         self._status_lbl.config(text=msg, fg=color)
