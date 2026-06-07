@@ -9,7 +9,7 @@ import subprocess
 import ssl
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 import urllib.request
 
 import pystray
@@ -105,11 +105,10 @@ def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
     def _download():
         try:
             root.after(0, lambda: status_var.set("Downloading update…"))
-            # Stream in chunks so large files don't get truncated
             with _urlopen(GITHUB_EXE_URL, timeout=120) as resp:
                 total = int(resp.headers.get("Content-Length", 0))
                 downloaded = 0
-                chunk_size = 65536  # 64 KB
+                chunk_size = 65536
                 with open(new_exe, "wb") as f:
                     while True:
                         chunk = resp.read(chunk_size)
@@ -121,7 +120,6 @@ def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
                             pct = int(downloaded / total * 100)
                             root.after(0, lambda p=pct: status_var.set(
                                 f"Downloading… {p}%"))
-            # Verify the file isn't suspiciously small
             if new_exe.stat().st_size < 1_000_000:
                 raise RuntimeError("Downloaded file is too small — may be corrupt.")
             bat = exe_path.with_name("_vc_updater.bat")
@@ -159,8 +157,7 @@ def _engine_loop(stop_event, root, status_var, b_start, b_stop):
         _log_queue.put("   Importing voice engine…\n")
         import voice_controls
         import importlib
-        importlib.reload(voice_controls)   # reload so config changes take effect
-        # Wire up the status overlay (must be set after reload)
+        importlib.reload(voice_controls)
         if _overlay:
             voice_controls._status_cb = lambda msg: root.after(0, _overlay.show, msg)
         _log_queue.put("   Voice engine loaded — starting loop\n\n")
@@ -226,22 +223,6 @@ def _stop_engine(status_var, b_start, b_stop):
     _ui_stopped(status_var, b_start, b_stop)
 
 
-# ── App Manager ────────────────────────────────────────────────────────────────
-
-def _open_manager(root):
-    from manage_apps import AppManagerWindow
-    win = AppManagerWindow(root)
-    win.grab_set()
-    win.focus_set()
-
-
-def _open_settings(root):
-    from settings_window import SettingsWindow
-    win = SettingsWindow(root)
-    win.grab_set()
-    win.focus_set()
-
-
 # ── Update check UI ────────────────────────────────────────────────────────────
 
 def _check_updates_ui(root, status_var):
@@ -272,15 +253,11 @@ _tray_icon: pystray.Icon | None = None
 
 
 def _make_tray_image() -> Image.Image:
-    """Draw a simple mic icon for the tray."""
     size = 64
     img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d    = ImageDraw.Draw(img)
-    # Purple background circle
     d.ellipse([0, 0, size - 1, size - 1], fill="#7c6af7")
-    # Simple mic body (white rounded rect)
     d.rounded_rectangle([22, 10, 42, 38], radius=8, fill="white")
-    # Mic stand
     d.line([(32, 38), (32, 50)], fill="white", width=3)
     d.line([(22, 50), (42, 50)], fill="white", width=3)
     return img
@@ -313,7 +290,6 @@ def _hide_window(root: tk.Tk) -> None:
 
 
 def _show_window() -> None:
-    """Restore the window from tray."""
     if _root_ref is not None:
         _root_ref.deiconify()
         _root_ref.lift()
@@ -321,7 +297,6 @@ def _show_window() -> None:
 
 
 def _quit_app() -> None:
-    """Stop engine, remove tray icon, destroy window."""
     global _tray_icon
     _stop_event.set()
     if _tray_icon:
@@ -334,7 +309,7 @@ def _quit_app() -> None:
         _root_ref.destroy()
 
 
-_root_ref: tk.Tk | None = None   # set inside main() so tray callbacks can reach it
+_root_ref: tk.Tk | None = None
 
 
 # ── Status overlay ─────────────────────────────────────────────────────────────
@@ -349,7 +324,6 @@ class StatusOverlay:
         self._after_id = None
 
     def show(self, text: str) -> None:
-        """Display text for 2 s (or until the next command). Thread-safe."""
         if not user_config.get_overlay_enabled():
             return
         if self._after_id:
@@ -371,12 +345,11 @@ class StatusOverlay:
 
     def _build(self) -> None:
         self._win = tk.Toplevel(self._root)
-        self._win.overrideredirect(True)        # no title bar or borders
+        self._win.overrideredirect(True)
         self._win.attributes("-topmost", True)
         self._win.attributes("-alpha", 0.90)
         self._win.configure(bg="#313244")
         self._win.withdraw()
-        # Thin coloured border effect via nested frames
         outer = tk.Frame(self._win, bg="#7c6af7", padx=2, pady=2)
         outer.pack()
         inner = tk.Frame(outer, bg="#1e1e2e", padx=20, pady=10)
@@ -386,44 +359,38 @@ class StatusOverlay:
             font=("Segoe UI Semibold", 12),
         )
         self._label.pack()
-        # Click anywhere on the overlay to dismiss early
         for w in (self._win, outer, inner, self._label):
             w.bind("<Button-1>", lambda _e: self._hide())
 
+    @staticmethod
+    def _work_area() -> tuple[int, int, int, int]:
+        try:
+            import ctypes, ctypes.wintypes
+            rc = ctypes.wintypes.RECT()
+            ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rc), 0)
+            return rc.left, rc.top, rc.right, rc.bottom
+        except Exception:
+            import tkinter as _tk
+            sw = _tk.Tk.winfo_screenwidth(_tk.Tk())
+            sh = _tk.Tk.winfo_screenheight(_tk.Tk())
+            return 0, 0, sw, sh
+
     def _reposition(self) -> None:
         self._win.update_idletasks()
-        sw  = self._root.winfo_screenwidth()
-        sh  = self._root.winfo_screenheight()
-        ow  = self._win.winfo_reqwidth()
-        oh  = self._win.winfo_reqheight()
-        pad = 24
-        tb  = 56   # approximate taskbar height
-
+        ow = self._win.winfo_reqwidth()
+        oh = self._win.winfo_reqheight()
+        wl, wt, wr, wb = self._work_area()
+        pad = 16
         pos = user_config.get_overlay_position()
-
-        if pos == "near cursor":
-            import ctypes
-            class _POINT(ctypes.Structure):
-                _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
-            _pt = _POINT()
-            ctypes.windll.user32.GetCursorPos(ctypes.byref(_pt))
-            cx, cy = _pt.x, _pt.y
-            x  = cx + 18
-            y  = cy + 22
-            # Clamp so the box never goes off-screen
-            x  = max(pad, min(x, sw - ow - pad))
-            y  = max(pad, min(y, sh - oh - tb))
-        else:
-            options = {
-                "top-left":      (pad,            pad),
-                "top-center":    ((sw-ow)//2,     pad),
-                "top-right":     (sw-ow-pad,      pad),
-                "bottom-left":   (pad,            sh-oh-tb),
-                "bottom-center": ((sw-ow)//2,     sh-oh-tb),
-                "bottom-right":  (sw-ow-pad,      sh-oh-tb),
-            }
-            x, y = options.get(pos, options["bottom-right"])
-
+        options = {
+            "top-left":      (wl + pad,           wt + pad),
+            "top-center":    (wl + (wr-wl-ow)//2, wt + pad),
+            "top-right":     (wr - ow - pad,       wt + pad),
+            "bottom-left":   (wl + pad,            wb - oh - pad),
+            "bottom-center": (wl + (wr-wl-ow)//2, wb - oh - pad),
+            "bottom-right":  (wr - ow - pad,       wb - oh - pad),
+        }
+        x, y = options.get(pos, options["bottom-right"])
         self._win.geometry(f"+{x}+{y}")
 
 
@@ -433,13 +400,13 @@ _overlay: StatusOverlay | None = None
 # ── Main window ───────────────────────────────────────────────────────────────
 
 def main():
-    BG    = "#1e1e2e"
-    CARD  = "#2a2a3e"
-    ACC   = "#7c6af7"
-    FG    = "#cdd6f4"
-    GRN   = "#a6e3a1"
-    RED   = "#f38ba8"
-    MUTED = "#585b70"
+    BG     = "#1e1e2e"
+    CARD   = "#2a2a3e"
+    ACC    = "#7c6af7"
+    FG     = "#cdd6f4"
+    GRN    = "#a6e3a1"
+    RED    = "#f38ba8"
+    MUTED  = "#585b70"
     LOG_BG = "#11111b"
 
     global _root_ref, _overlay
@@ -448,8 +415,9 @@ def main():
     _overlay  = StatusOverlay(root)
     root.title(f"Voice Commands  v{VERSION}")
     root.configure(bg=BG)
+    root.geometry("960x740")
+    root.minsize(800, 600)
     root.resizable(True, True)
-    # X button hides to tray instead of closing
     root.protocol("WM_DELETE_WINDOW", lambda: _hide_window(root))
 
     def mkbtn(parent, text, cmd, color=ACC, state="normal", width=22):
@@ -460,7 +428,7 @@ def main():
                          padx=14, pady=7, cursor="hand2", bd=0,
                          state=state, width=width)
 
-    # Header
+    # ── Header ─────────────────────────────────────────────────────────────────
     hdr = tk.Frame(root, bg=ACC, pady=10)
     hdr.pack(fill="x")
     tk.Label(hdr, text="🎙  Voice Commands", bg=ACC, fg="#ffffff",
@@ -468,32 +436,49 @@ def main():
     tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#c8b8ff",
              font=("Segoe UI", 9)).pack()
 
-    # Status
-    card = tk.Frame(root, bg=CARD, padx=20, pady=12)
-    card.pack(fill="x", padx=16, pady=(14, 0))
+    # ── Notebook ───────────────────────────────────────────────────────────────
+    style = ttk.Style(root)
+    style.theme_use("clam")
+    style.configure("Main.TNotebook",
+                    background=BG, borderwidth=0, tabmargins=[0, 0, 0, 0])
+    style.configure("Main.TNotebook.Tab",
+                    background=CARD, foreground=FG,
+                    padding=[20, 8], font=("Segoe UI Semibold", 10))
+    style.map("Main.TNotebook.Tab",
+              background=[("selected", ACC)],
+              foreground=[("selected", "#ffffff")])
+
+    nb = ttk.Notebook(root, style="Main.TNotebook")
+    nb.pack(fill="both", expand=True, padx=0, pady=0)
+
+    # ── Tab 1: Engine ──────────────────────────────────────────────────────────
+    engine_tab = tk.Frame(nb, bg=BG)
+    nb.add(engine_tab, text="🎙  Engine")
+
+    # Status card
+    status_card = tk.Frame(engine_tab, bg=CARD, padx=20, pady=12)
+    status_card.pack(fill="x", padx=16, pady=(14, 0))
     status_var = tk.StringVar(value="○ Stopped")
-    tk.Label(card, textvariable=status_var, bg=CARD, fg=GRN,
+    tk.Label(status_card, textvariable=status_var, bg=CARD, fg=GRN,
              font=("Segoe UI Semibold", 13)).pack()
 
-    # Buttons
-    btns = tk.Frame(root, bg=BG, pady=4)
-    btns.pack(fill="x", padx=16)
+    # Engine control buttons
+    engine_btns = tk.Frame(engine_tab, bg=BG, pady=4)
+    engine_btns.pack(fill="x", padx=16)
 
-    b_start = mkbtn(btns, "▶  Start Voice Commands", lambda: None)
-    b_stop  = mkbtn(btns, "■  Stop Voice Commands",
+    b_start = mkbtn(engine_btns, "▶  Start Voice Commands", lambda: None)
+    b_stop  = mkbtn(engine_btns, "■  Stop Voice Commands",
                     lambda: _stop_engine(status_var, b_start, b_stop),
                     color=MUTED, state="disabled")
     b_start.config(command=lambda: _start_engine(root, status_var, b_start, b_stop))
-    b_apps = mkbtn(btns, "⚙  Manage Apps",      lambda: _open_manager(root))
-    b_cfg  = mkbtn(btns, "🔧  Settings",         lambda: _open_settings(root), color=MUTED)
-    b_upd  = mkbtn(btns, "🔄  Check for Updates",
-                   lambda: _check_updates_ui(root, status_var), color=MUTED)
+    b_upd = mkbtn(engine_btns, "🔄  Check for Updates",
+                  lambda: _check_updates_ui(root, status_var), color=MUTED)
 
-    for b in (b_start, b_stop, b_apps, b_cfg, b_upd):
+    for b in (b_start, b_stop, b_upd):
         b.pack(pady=3, fill="x")
 
     # Model path row
-    model_row = tk.Frame(root, bg=CARD, padx=12, pady=8)
+    model_row = tk.Frame(engine_tab, bg=CARD, padx=12, pady=8)
     model_row.pack(fill="x", padx=16, pady=(10, 0))
     tk.Label(model_row, text="Vosk model path:", bg=CARD, fg=FG,
              font=("Segoe UI", 9)).pack(anchor="w")
@@ -505,7 +490,7 @@ def main():
     path_lbl  = tk.Label(path_row, textvariable=model_var, bg=CARD,
                          fg=GRN if exists else RED,
                          font=("Consolas", 8), anchor="w",
-                         wraplength=310, justify="left")
+                         wraplength=600, justify="left")
     path_lbl.pack(side="left", fill="x", expand=True)
 
     def _pick_model():
@@ -518,8 +503,8 @@ def main():
     mkbtn(path_row, "Browse…", _pick_model, color=MUTED, width=8).pack(
         side="right", padx=(6, 0))
 
-    # Debug log panel
-    debug_frame = tk.Frame(root, bg=BG)
+    # Debug log
+    debug_frame = tk.Frame(engine_tab, bg=BG)
     debug_frame.pack(fill="both", expand=True, padx=16, pady=(10, 0))
 
     debug_header = tk.Frame(debug_frame, bg=BG)
@@ -574,14 +559,28 @@ def main():
 
     root.after(100, _poll_log)
 
-    # Footer row: config path + close button
-    footer = tk.Frame(root, bg=BG)
-    footer.pack(fill="x", padx=16, pady=(6, 8))
-    tk.Label(footer, text=f"Config: {user_config.config_path()}",
+    # Engine tab footer
+    eng_footer = tk.Frame(engine_tab, bg=BG)
+    eng_footer.pack(fill="x", padx=16, pady=(6, 8))
+    tk.Label(eng_footer, text=f"Config: {user_config.config_path()}",
              bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(side="left")
-    mkbtn(footer, "✕  Close App", _quit_app, color=RED, width=14).pack(side="right")
+    mkbtn(eng_footer, "✕  Close App", _quit_app, color=RED, width=14).pack(side="right")
 
-    # Log startup info
+    # ── Tab 2: Apps ────────────────────────────────────────────────────────────
+    apps_tab = tk.Frame(nb, bg=BG)
+    nb.add(apps_tab, text="📦  Apps")
+
+    from manage_apps import AppManagerWidget
+    AppManagerWidget(apps_tab).pack(fill="both", expand=True)
+
+    # ── Tab 3: Settings ────────────────────────────────────────────────────────
+    settings_tab = tk.Frame(nb, bg=BG)
+    nb.add(settings_tab, text="⚙  Settings")
+
+    from settings_window import SettingsWidget
+    SettingsWidget(settings_tab).pack(fill="both", expand=True)
+
+    # ── Startup log ────────────────────────────────────────────────────────────
     _log_queue.put(f"Voice Commands v{VERSION} started\n")
     _log_queue.put(f"Model path : {user_config.get_model_path()}\n")
     _log_queue.put(f"Model found: {pathlib.Path(user_config.get_model_path()).is_dir()}\n")
