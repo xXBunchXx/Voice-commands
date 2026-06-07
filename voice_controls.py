@@ -1293,5 +1293,5 @@ def run(stop_event: _threading.Event | None = None) -> bool:
 
 
 if __name__ == "__main__":
-    while run():          # loop handles "restart voice commands"
+    while run():          # loop handles "restart echo"
         print("Restarting...\n")
