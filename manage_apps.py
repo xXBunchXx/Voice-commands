@@ -370,7 +370,18 @@ class ScanDialog(tk.Toplevel):
         deduped.sort(key=lambda x: x["display"].lower())
         self.after(0, lambda: self._populate(deduped))
 
+    def _refresh_folders_lbl(self):
+        folders = user_config.get_scan_folders()
+        if folders:
+            self._folders_lbl.config(
+                text="  ·  ".join(pathlib.Path(f).name for f in folders))
+        else:
+            self._folders_lbl.config(text="none — add a folder to search more locations")
+
     def _populate(self, results):
+        # Clear old rows
+        for w in self._inner.winfo_children():
+            w.destroy()
         self._results = results
         self._visible = results
         self._vars = []
@@ -383,7 +394,9 @@ class ScanDialog(tk.Toplevel):
             nv = tk.StringVar(value=r["name"])
             self._name_vars.append(nv)
             self._make_row(self._inner, r, v, nv, r["name"] in existing)
-        self._status.config(text=f"Found {len(results)} apps")
+        extra = len(user_config.get_scan_folders())
+        suffix = f" + {extra} extra folder(s)" if extra else ""
+        self._status.config(text=f"Found {len(results)} apps{suffix}")
         self._add_btn.config(state="normal")
         self._update_count()
 
