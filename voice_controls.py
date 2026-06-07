@@ -870,6 +870,46 @@ def _parse_app(words: list[str], start: int) -> tuple[str | None, list[str]]:
 last_command = None
 last_command_time = 0
 
+# ── Ghost-command suppressor ──────────────────────────────────────────────
+# If the *same* phrase fires repeatedly without any other command in between
+# it's almost certainly background noise / hallucination.  After
+# GHOST_MAX_FIRES fires within GHOST_WINDOW seconds we mute that phrase for
+# GHOST_MUTE_SECS.  The mute is cleared automatically once the timer expires
+# or when the engine restarts.
+GHOST_MAX_FIRES  = 3     # fires within the window before suppression kicks in
+GHOST_WINDOW     = 6.0   # seconds — rolling window tracked per phrase
+GHOST_MUTE_SECS  = 12.0  # seconds to ignore the phrase after it trips
+
+_ghost_streak: dict[str, list[float]] = {}  # phrase → [fire timestamps]
+_ghost_muted:  dict[str, float]       = {}  # phrase → mute-until timestamp
+
+
+def _ghost_check(text: str, now: float) -> bool:
+    """Return True (and suppress) if *text* looks like a ghost command."""
+    # Already muted?
+    until = _ghost_muted.get(text)
+    if until is not None:
+        if now < until:
+            remaining = int(until - now)
+            print(f"🚫  Ghost suppressed: '{text}'  ({remaining}s remaining)")
+            return True
+        else:
+            del _ghost_muted[text]          # mute expired — let it through
+
+    # Record this fire and prune old entries outside the rolling window
+    fires = _ghost_streak.setdefault(text, [])
+    fires.append(now)
+    fires[:] = [t for t in fires if now - t <= GHOST_WINDOW]
+
+    if len(fires) >= GHOST_MAX_FIRES:
+        _ghost_muted[text] = now + GHOST_MUTE_SECS
+        _ghost_streak[text] = []
+        print(f"🚫  '{text}' fired {len(fires)}× in {GHOST_WINDOW:.0f}s "
+              f"— suppressing for {GHOST_MUTE_SECS:.0f}s")
+        return True
+
+    return False
+
 
 def handle_command(text: str) -> None:
     global last_command, last_command_time
@@ -877,8 +917,15 @@ def handle_command(text: str) -> None:
         return
     words = text.split()
     now = time.time()
+
+    # Identical-repeat cooldown (fast re-fires of the same phrase)
     if text == last_command and (now - last_command_time) < COOLDOWN:
         return
+
+    # Ghost-command suppressor (slow-repeat hallucinations)
+    if _ghost_check(text, now):
+        return
+
     last_command = text
     last_command_time = now
 
