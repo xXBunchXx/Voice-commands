@@ -874,6 +874,52 @@ def _parse_app(words: list[str], start: int) -> tuple[str | None, list[str]]:
     return None, words[start:]
 
 
+def _apply_template_override(text: str, raw_audio: bytes) -> str:
+    """If *text* contains a recognised command prefix but an unknown app name,
+    compare *raw_audio* against voice templates.  If a template matches, rebuild
+    the command with the template's spoken name.
+
+    Example: text="open right"  (Vosk misheard "ace sprite" as "right")
+             template match → "ace sprite"
+             return → "open ace sprite"
+    """
+    words = text.split()
+    if not words:
+        return text
+
+    # Find the longest command prefix that we know
+    _prefix_keys = ("open", "close", "minimise", "maximise", "move", "merge",
+                    "play_pause")
+    prefix_end = 0
+    for length in range(min(3, len(words)), 0, -1):
+        candidate = " ".join(words[:length])
+        for key in _prefix_keys:
+            if candidate in _cw_all(key):
+                prefix_end = length
+                break
+        if prefix_end:
+            break
+
+    if not prefix_end:
+        return text   # not an app-command, don't touch it
+
+    # Does the rest of the phrase already resolve to a known app?
+    if prefix_end < len(words):
+        app, _ = _parse_app(words, prefix_end)
+        if app is not None:
+            return text   # app recognised correctly — leave it alone
+
+    # App portion is unknown — try template matching
+    match = voice_templates.match(raw_audio)
+    if match is None:
+        return text
+
+    spoken_name, dist = match
+    new_text = " ".join(words[:prefix_end]) + " " + spoken_name
+    print(f"  🎤  Template matched '{spoken_name}' (dist={dist:.2f}) → '{new_text}'")
+    return new_text
+
+
 last_command = None
 last_command_time = 0
 
