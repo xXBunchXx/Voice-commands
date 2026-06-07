@@ -699,9 +699,10 @@ class AppManagerWidget(tk.Frame):
         self.after(6000, lambda: self._status_lbl.config(text=""))
 
     def _on_add(self):
-        name = self.e_name.get().strip().lower()
-        path = self.e_path.get().strip()
-        proc = self.e_proc.get().strip()
+        name   = self.e_name.get().strip().lower()
+        path   = self.e_path.get().strip()
+        proc   = self.e_proc.get().strip()
+        spoken = self.e_spoken.get().strip().lower()
         if not name or not path or not proc:
             messagebox.showwarning("Missing fields", "Please fill in all three fields.",
                                    parent=self.winfo_toplevel())
@@ -711,10 +712,12 @@ class AppManagerWidget(tk.Frame):
                 parent=self.winfo_toplevel()):
             return
         user_config.add_entry(name, path, proc)
+        user_config.set_spoken_name(name, spoken)
         self._reload()
-        for e in (self.e_name, self.e_path, self.e_proc):
+        for e in (self.e_name, self.e_path, self.e_proc, self.e_spoken):
             e.delete(0, "end")
-        self._flash(f'✓  Added "{name}".')
+        note = f'  (say "{spoken}")' if spoken else ""
+        self._flash(f'✓  Added "{name}"{note}.')
 
     def _on_rename(self):
         old = self.combo_var.get()
