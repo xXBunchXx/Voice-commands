@@ -1180,9 +1180,14 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     print(f"Confidence threshold: {CONFIDENCE_THRESHOLD:.0%}")
     print("Say 'diagnose' at any time to recheck running apps.\n")
 
+    voice_templates.reload()   # pre-load any saved training templates
+
+    _utterance_buf: list[bytes] = []   # raw audio chunks for current utterance
+
     try:
         while not stop_event.is_set():
             data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
+            _utterance_buf.append(data)
 
             # ── Feed reference model (keep it in sync) ────────────────────
             if rec_ref is not None:
@@ -1194,6 +1199,9 @@ def run(stop_event: _threading.Event | None = None) -> bool:
 
             # ── Main model ────────────────────────────────────────────────
             if rec.AcceptWaveform(data):
+                raw_audio = b"".join(_utterance_buf)
+                _utterance_buf = []
+
                 result = json.loads(rec.Result())
                 text   = result.get("text", "").strip().lower()
                 if not text or text == "[unk]":
@@ -1210,12 +1218,16 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                     if not text:
                         continue
 
+                # Voice-template override — if the command has a valid prefix
+                # but an unrecognised app name, check trained templates
+                text = _apply_template_override(text, raw_audio)
+
                 conf = average_confidence(result)
                 if conf >= CONFIDENCE_THRESHOLD:
-                    # Single clean log line — shows what was heard and whether
-                    # the noise filter removed a ghost word
-                    noise_note = f"  [noise filter removed '{noise_word}']" if noise_word else ""
-                    print(f"🎤  '{text}'{noise_note}")
+                    notes = []
+                    if noise_word: notes.append(f"noise filter removed '{noise_word}'")
+                    note_str = f"  [{', '.join(notes)}]" if notes else ""
+                    print(f"🎤  '{text}'{note_str}")
 
                     if handle_command(text):
                         rec.Reset()
