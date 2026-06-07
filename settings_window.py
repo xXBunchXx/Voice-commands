@@ -1260,7 +1260,7 @@ class SettingsWidget(tk.Frame):
         btn_row = tk.Frame(card, bg=CARD)
         btn_row.pack(fill="x", pady=(4, 0))
 
-        progress_lbl = tk.Label(btn_row, text="", bg=CARD, fg=ACC,
+        progress_lbl = tk.Label(btn_row, text="", bg=CARD, fg=ACCENT_TEXT,
                                 font=("Segoe UI", 8))
         progress_lbl.pack(side="left")
 
