@@ -431,7 +431,7 @@ def main():
     # ── Header ─────────────────────────────────────────────────────────────────
     hdr = tk.Frame(root, bg=ACC, pady=10)
     hdr.pack(fill="x")
-    tk.Label(hdr, text="🎙  Voice Commands", bg=ACC, fg="#ffffff",
+    tk.Label(hdr, text="🎙  Echo", bg=ACC, fg="#ffffff",
              font=("Segoe UI Semibold", 14)).pack()
     tk.Label(hdr, text=f"v{VERSION}", bg=ACC, fg="#c8b8ff",
              font=("Segoe UI", 9)).pack()
