@@ -370,7 +370,7 @@ class StatusOverlay:
         self._win.overrideredirect(True)
         self._win.attributes("-topmost", True)
         self._win.attributes("-alpha", 0.90)
-        self._win.configure(bg="#313244")
+        self._win.configure(bg="#0f1a2e")
         self._win.withdraw()
         outer = tk.Frame(self._win, bg="#1a56db", padx=2, pady=2)
         outer.pack()
