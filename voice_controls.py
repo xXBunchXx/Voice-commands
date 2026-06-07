@@ -925,8 +925,18 @@ def _apply_template_override(text: str, raw_audio: bytes) -> str:
         if app is not None:
             return text   # app recognised correctly — leave it alone
 
-    # App portion is unknown — try template matching
-    match = voice_templates.match(raw_audio)
+    # App portion is unknown — try template matching.
+    # Templates were recorded as just the spoken app name (e.g. "ace sprite"),
+    # NOT including the command prefix (e.g. "open").  Comparing the full
+    # utterance audio against those short templates makes DTW distances huge
+    # and matches fail.  We estimate how long the prefix takes (~350 ms per
+    # word at 16 kHz int16 = 11 200 bytes per word) and skip that much audio
+    # before handing it to the matcher.
+    _BYTES_PER_WORD = int(0.35 * SAMPLE_RATE * 2)   # 2 bytes/sample (int16)
+    skip = prefix_end * _BYTES_PER_WORD
+    app_audio = raw_audio[skip:] if skip < len(raw_audio) else raw_audio
+
+    match = voice_templates.match(app_audio)
     if match is None:
         return text
 
