@@ -39,37 +39,10 @@ EDITOR_PROCS:   frozenset = frozenset({
 })
 
 # {voice phrase: {context: keyboard shortcut}}
-# context can be "browser", "explorer", "editor", or "any"
+# context can be "browser", "explorer", "editor", "any", or a proc name / custom group name.
+# Only one command is included by default — add more in the Settings → Commands tab.
 DEFAULT_CONTEXT_COMMANDS: dict[str, dict[str, str]] = {
-    # Browser / Explorer tabs
-    "close tab":       {"browser": "ctrl+w",        "explorer": "ctrl+w"},
-    "reload":          {"browser": "f5",             "explorer": "f5"},
-    "hard reload":     {"browser": "ctrl+shift+r"},
-    "new tab":         {"browser": "ctrl+t",         "explorer": "ctrl+t"},
-    "next tab":        {"browser": "ctrl+tab",       "explorer": "ctrl+tab"},
-    "previous tab":    {"browser": "ctrl+shift+tab", "explorer": "ctrl+shift+tab"},
-    "back":            {"browser": "alt+left",       "explorer": "alt+left"},
-    "forward":         {"browser": "alt+right",      "explorer": "alt+right"},
-    "address bar":     {"browser": "ctrl+l",         "explorer": "ctrl+l"},
-    "bookmark":        {"browser": "ctrl+d"},
-    "new window":      {"browser": "ctrl+n"},
-    "private":         {"browser": "ctrl+shift+n"},
-    "developer tools": {"browser": "f12"},
-    "pin tab":         {"browser": "ctrl+shift+p"},
-    # Text / editing
-    "find":            {"browser": "ctrl+f", "editor": "ctrl+f", "explorer": "ctrl+f"},
-    "redo":            {"any": "ctrl+y"},
-    "select all":      {"any": "ctrl+a"},
-    "zoom in":         {"browser": "ctrl+="},
-    "zoom out":        {"browser": "ctrl+-"},
-    "zoom reset":      {"browser": "ctrl+0"},
-    # System-wide
-    "screenshot":      {"any": "windows+shift+s"},
-    "lock":            {"any": "windows+l"},
-    "task view":       {"any": "windows+tab"},
-    "emoji":           {"any": "windows+."},
-    "clipboard":       {"any": "windows+v"},
-    "snip":            {"any": "windows+shift+s"},
+    "screenshot": {"any": "windows+shift+s"},
 }
 
 
