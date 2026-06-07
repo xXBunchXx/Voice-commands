@@ -174,11 +174,11 @@ def load() -> dict:
             if key not in data:
                 data[key] = default
                 changed = True
-        # Ensure the "voice commands" entry always exists (added in a later version)
-        vc_exe = str(_exe_dir() / "VoiceCommands.exe")
-        if "voice commands" not in data.get("APPS", {}):
-            data.setdefault("APPS", {})["voice commands"] = vc_exe
-            data.setdefault("PROC_NAMES", {})["voice commands"] = "VoiceCommands.exe"
+        # Ensure the "echo" entry always exists
+        vc_exe = str(_exe_dir() / "Echo.exe")
+        if "echo" not in data.get("APPS", {}):
+            data.setdefault("APPS", {})["echo"] = vc_exe
+            data.setdefault("PROC_NAMES", {})["echo"] = "Echo.exe"
             changed = True
         # Fix legacy wrong proc name for settings
         if data.get("PROC_NAMES", {}).get("settings") == "ms-settings:":
