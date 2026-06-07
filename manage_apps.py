@@ -1,6 +1,6 @@
 """
-App Manager GUI — add / delete entries in the user's local config.
-Opened as a Toplevel from main.py, or runs standalone.
+App Manager — add / delete entries in the user's local config.
+Embeds directly in the main window as a tab (AppManagerWidget).
 """
 import pathlib
 import re
@@ -9,63 +9,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import user_config
 
-
-# ── Simple input dialog ───────────────────────────────────────────────────────
-
-class _SimpleDialog(tk.Toplevel):
-    """Small popup with one or two labelled Entry fields and OK/Cancel."""
-
-    def __init__(self, master, title, icon, fields, prefill=None):
-        super().__init__(master)
-        self.title(title)
-        self.configure(bg="#1e1e2e")
-        self.resizable(False, False)
-        self.result = None
-        BG = "#1e1e2e"; CARD = "#2a2a3e"; ACC = "#7c6af7"
-        FG = "#cdd6f4"; ENTRY_BG = "#313244"; MUTED = "#585b70"
-
-        tk.Label(self, text=f"{icon}  {title}", bg=BG, fg=ACC,
-                 font=("Segoe UI Semibold", 11)).pack(padx=20, pady=(14, 8))
-
-        self._entries = []
-        for i, (label, hint) in enumerate(fields):
-            f = tk.Frame(self, bg=BG)
-            f.pack(fill="x", padx=20, pady=(0, 6))
-            tk.Label(f, text=label, bg=BG, fg=FG,
-                     font=("Segoe UI", 9)).pack(anchor="w")
-            e = tk.Entry(f, width=42, bg=ENTRY_BG, fg=FG,
-                         insertbackground=FG, relief="flat",
-                         font=("Segoe UI", 10), bd=4)
-            e.pack(fill="x")
-            if prefill and i < len(prefill):
-                e.insert(0, prefill[i])
-            else:
-                tk.Label(f, text=hint, bg=BG, fg=MUTED,
-                         font=("Segoe UI", 8)).pack(anchor="w")
-            self._entries.append(e)
-
-        btn_row = tk.Frame(self, bg=BG)
-        btn_row.pack(fill="x", padx=20, pady=(4, 14))
-
-        def _ok():
-            self.result = [e.get() for e in self._entries]
-            self.destroy()
-
-        tk.Button(btn_row, text="OK", command=_ok,
-                  bg=ACC, fg="#fff", activebackground=ACC,
-                  activeforeground="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 9), padx=14, pady=5,
-                  cursor="hand2").pack(side="right")
-        tk.Button(btn_row, text="Cancel", command=self.destroy,
-                  bg=MUTED, fg="#fff", activebackground=MUTED,
-                  activeforeground="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 9), padx=14, pady=5,
-                  cursor="hand2").pack(side="right", padx=(0, 8))
-
-        self._entries[0].focus_set()
-        self.bind("<Return>", lambda _: _ok())
-        self.bind("<Escape>", lambda _: self.destroy())
-        self.grab_set()
+BG       = "#1e1e2e"
+CARD     = "#2a2a3e"
+ACC      = "#7c6af7"
+FG       = "#cdd6f4"
+ENTRY_BG = "#313244"
+MUTED    = "#585b70"
+GRN      = "#a6e3a1"
+RED      = "#f38ba8"
 
 
 # ── Built-in Windows apps ─────────────────────────────────────────────────────
@@ -73,7 +24,8 @@ class _SimpleDialog(tk.Toplevel):
 _BUILTIN_APPS = [
     ("Notepad",          "notepad.exe",                          "notepad.exe"),
     ("Command Prompt",   r"C:\Windows\System32\cmd.exe",         "cmd.exe"),
-    ("PowerShell",       r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe", "powershell.exe"),
+    ("PowerShell",       r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                                                                 "powershell.exe"),
     ("Windows Terminal", "wt.exe",                               "WindowsTerminal.exe"),
     ("File Explorer",    r"C:\Windows\explorer.exe",             "explorer.exe"),
     ("Settings",         "ms-settings:",                         "SystemSettings.exe"),
@@ -81,7 +33,8 @@ _BUILTIN_APPS = [
     ("Paint",            r"C:\Windows\System32\mspaint.exe",     "mspaint.exe"),
     ("Snipping Tool",    r"C:\Windows\System32\SnippingTool.exe","SnippingTool.exe"),
     ("Task Manager",     r"C:\Windows\System32\Taskmgr.exe",     "Taskmgr.exe"),
-    ("WordPad",          r"C:\Program Files\Windows NT\Accessories\wordpad.exe", "wordpad.exe"),
+    ("WordPad",          r"C:\Program Files\Windows NT\Accessories\wordpad.exe",
+                                                                 "wordpad.exe"),
     ("Control Panel",    r"C:\Windows\System32\control.exe",     "control.exe"),
     ("Registry Editor",  r"C:\Windows\regedit.exe",              "regedit.exe"),
     ("Character Map",    r"C:\Windows\System32\charmap.exe",     "charmap.exe"),
@@ -99,31 +52,36 @@ def _builtin_apps() -> list[dict]:
     return results
 
 
-# ── Registry scanner ──────────────────────────────────────────────────────────
+def _to_voice_name(display: str) -> str:
+    name = re.sub(r"\d[\d.]*", "", display)
+    name = re.sub(r"[^a-z ]", "", name.lower()).strip()
+    words = [w for w in name.split() if len(w) > 1]
+    return words[-1] if words else name
+
+
+# ── Folder scanner ────────────────────────────────────────────────────────────
 
 def _scan_folder(folder: str) -> list[dict]:
-    """Scan a folder (up to 3 levels deep) for exe files large enough to be a game/app."""
     results = []
     seen = set()
     base = pathlib.Path(folder)
     if not base.is_dir():
         return results
-    for exe in list(base.glob("*.exe")) + \
-               list(base.glob("*/*.exe")) + \
-               list(base.glob("*/*/*.exe")):
+    for exe in (list(base.glob("*.exe")) +
+                list(base.glob("*/*.exe")) +
+                list(base.glob("*/*/*.exe"))):
         key = str(exe).lower()
         if key in seen:
             continue
         seen.add(key)
         try:
-            if exe.stat().st_size < 200_000:   # skip tiny helpers < 200 KB
+            if exe.stat().st_size < 200_000:
                 continue
         except Exception:
             continue
-        voice_name = _to_voice_name(exe.stem)
         results.append({
             "display": f"{exe.stem}  ({base.name})",
-            "name":    voice_name,
+            "name":    _to_voice_name(exe.stem),
             "path":    str(exe),
             "proc":    exe.name,
         })
@@ -131,8 +89,9 @@ def _scan_folder(folder: str) -> list[dict]:
     return results
 
 
+# ── Registry scanner ──────────────────────────────────────────────────────────
+
 def _scan_registry() -> list[dict]:
-    """Return list of {name, path, proc} dicts from the Windows registry."""
     import winreg
     results = []
     seen_paths = set()
@@ -165,18 +124,14 @@ def _scan_registry() -> list[dict]:
                 display = _qval(sk, "DisplayName")
                 if not display:
                     continue
-                # Skip system components / updates
                 if _qval(sk, "SystemComponent") == "1":
                     continue
                 if re.search(r"(update|hotfix|kb\d{6}|redistributable|runtime|sdk|"
                              r"driver|pack|framework)", display, re.I):
                     continue
-
-                # Try to find an exe — InstallLocation, then DisplayIcon
                 exe_path = ""
                 loc = _qval(sk, "InstallLocation")
                 if loc and pathlib.Path(loc).is_dir():
-                    # Pick the first exe in the folder that matches the app name
                     folder = pathlib.Path(loc)
                     stem = re.sub(r"[^a-z0-9]", "", display.lower())
                     for exe in folder.glob("*.exe"):
@@ -185,23 +140,18 @@ def _scan_registry() -> list[dict]:
                             exe_path = str(exe)
                             break
                     if not exe_path:
-                        # fallback: first exe in folder
                         exes = list(folder.glob("*.exe"))
                         if exes:
                             exe_path = str(exes[0])
-
                 if not exe_path:
                     icon = _qval(sk, "DisplayIcon")
                     if icon:
-                        # DisplayIcon may be "path.exe,0" or just "path.exe"
                         icon = icon.split(",")[0].strip().strip('"')
                         if icon.lower().endswith(".exe") and pathlib.Path(icon).exists():
                             exe_path = icon
-
                 if not exe_path or exe_path in seen_paths:
                     continue
                 seen_paths.add(exe_path)
-
                 voice_name = _to_voice_name(display)
                 proc = pathlib.Path(exe_path).name
                 results.append({"display": display, "name": voice_name,
@@ -214,390 +164,108 @@ def _scan_registry() -> list[dict]:
     return results
 
 
-def _to_voice_name(display: str) -> str:
-    """Turn a display name like 'Mozilla Firefox' into a voice command 'firefox'."""
-    # Remove version numbers and punctuation
-    name = re.sub(r"\d[\d.]*", "", display)
-    name = re.sub(r"[^a-z ]", "", name.lower()).strip()
-    # Take only the most meaningful word (usually last brand word)
-    words = [w for w in name.split() if len(w) > 1]
-    return words[-1] if words else name
+# ── App Manager Widget ────────────────────────────────────────────────────────
 
+class AppManagerWidget(tk.Frame):
+    """Embeds directly into a parent frame / notebook tab."""
 
-# ── Scan dialog ───────────────────────────────────────────────────────────────
-
-class ScanDialog(tk.Toplevel):
-    def __init__(self, master):
-        super().__init__(master)
-        self.title("Scan Installed Apps")
-        self.configure(bg="#1e1e2e")
-        self.resizable(True, True)
-        self.geometry("640x500")
-        self._results = []
-        self._vars = []
-        self._build_ui()
-        threading.Thread(target=self._do_scan, daemon=True).start()
-
-    def _build_ui(self):
-        BG = "#1e1e2e"; CARD = "#2a2a3e"; ACC = "#7c6af7"
-        FG = "#cdd6f4"; MUTED = "#585b70"; GRN = "#a6e3a1"
-
-        tk.Label(self, text="🔍  Scan Installed Apps", bg=BG, fg=ACC,
-                 font=("Segoe UI Semibold", 12)).pack(pady=(12, 2))
-        self._status = tk.Label(self, text="Scanning registry…", bg=BG, fg=MUTED,
-                                font=("Segoe UI", 9))
-        self._status.pack()
-
-        # Search bar
-        search_row = tk.Frame(self, bg=BG)
-        search_row.pack(fill="x", padx=12, pady=(8, 0))
-        tk.Label(search_row, text="Filter:", bg=BG, fg=FG,
-                 font=("Segoe UI", 9)).pack(side="left")
-        self._search_var = tk.StringVar()
-        self._search_var.trace_add("write", lambda *_: self._filter())
-        tk.Entry(search_row, textvariable=self._search_var,
-                 bg="#313244", fg=FG, insertbackground=FG,
-                 relief="flat", font=("Segoe UI", 10), bd=4).pack(
-            side="left", fill="x", expand=True, padx=(6, 0))
-
-        # Checklist
-        list_frame = tk.Frame(self, bg=CARD)
-        list_frame.pack(fill="both", expand=True, padx=12, pady=8)
-
-        self._canvas = tk.Canvas(list_frame, bg=CARD, highlightthickness=0)
-        sb = ttk.Scrollbar(list_frame, orient="vertical",
-                           command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=sb.set)
-        sb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
-
-        self._inner = tk.Frame(self._canvas, bg=CARD)
-        self._canvas_win = self._canvas.create_window(
-            (0, 0), window=self._inner, anchor="nw")
-        self._inner.bind("<Configure>",
-                         lambda e: self._canvas.configure(
-                             scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>",
-                          lambda e: self._canvas.itemconfig(
-                              self._canvas_win, width=e.width))
-        self._canvas.bind_all("<MouseWheel>",
-                              lambda e: self._canvas.yview_scroll(
-                                  -1 * (e.delta // 120), "units"))
-
-        # ── Extra search folders ──────────────────────────────────────────────
-        folders_frame = tk.Frame(self, bg=BG)
-        folders_frame.pack(fill="x", padx=12, pady=(0, 4))
-        tk.Label(folders_frame, text="Extra search folders:", bg=BG, fg=MUTED,
-                 font=("Segoe UI Semibold", 8)).pack(side="left")
-
-        self._folders_lbl = tk.Label(folders_frame, text="", bg=BG, fg=FG,
-                                     font=("Segoe UI", 8), anchor="w")
-        self._folders_lbl.pack(side="left", padx=(6, 0), fill="x", expand=True)
-
-        def _add_scan_folder():
-            folder = filedialog.askdirectory(
-                title="Select extra folder to search (e.g. D:\\SteamLibrary\\steamapps\\common)",
-                parent=self)
-            if not folder:
-                return
-            folders = user_config.get_scan_folders()
-            if folder not in folders:
-                folders.append(folder)
-                user_config.set_scan_folders(folders)
-            self._refresh_folders_lbl()
-            self._status.config(text="Rescanning with new folder…")
-            threading.Thread(target=self._do_scan, daemon=True).start()
-
-        def _clear_scan_folders():
-            user_config.set_scan_folders([])
-            self._refresh_folders_lbl()
-            self._status.config(text="Rescanning…")
-            threading.Thread(target=self._do_scan, daemon=True).start()
-
-        tk.Button(folders_frame, text="➕ Add Folder", command=_add_scan_folder,
-                  bg=MUTED, fg="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 8), padx=6, pady=2,
-                  cursor="hand2").pack(side="left", padx=(8, 0))
-        tk.Button(folders_frame, text="✕ Clear", command=_clear_scan_folders,
-                  bg=MUTED, fg="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 8), padx=6, pady=2,
-                  cursor="hand2").pack(side="left", padx=(4, 0))
-        self._refresh_folders_lbl()
-
-        # Bottom buttons
-        bot = tk.Frame(self, bg=BG)
-        bot.pack(fill="x", padx=12, pady=(0, 10))
-
-        def _sel_all():
-            existing = set(user_config.get_apps().keys())
-            for v, r in zip(self._vars, self._visible):
-                if r["name"] not in existing:
-                    v.set(True)
-
-        tk.Button(bot, text="Select All", command=_sel_all,
-                  bg=MUTED, fg="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 9), padx=10, pady=5,
-                  cursor="hand2").pack(side="left")
-        tk.Button(bot, text="Deselect All",
-                  command=lambda: [v.set(False) for v in self._vars],
-                  bg=MUTED, fg="#fff", relief="flat",
-                  font=("Segoe UI Semibold", 9), padx=10, pady=5,
-                  cursor="hand2").pack(side="left", padx=(6, 0))
-
-        self._add_btn = tk.Button(
-            bot, text="➕  Add Selected", command=self._add_selected,
-            bg=ACC, fg="#fff", relief="flat",
-            font=("Segoe UI Semibold", 10), padx=14, pady=5,
-            cursor="hand2", state="disabled")
-        self._add_btn.pack(side="right")
-
-        self._count_lbl = tk.Label(bot, text="", bg=BG, fg=GRN,
-                                   font=("Segoe UI", 9))
-        self._count_lbl.pack(side="right", padx=(0, 10))
-
-    def _do_scan(self):
-        results = _scan_registry()
-        for folder in user_config.get_scan_folders():
-            results += _scan_folder(folder)
-        # Deduplicate by path
-        seen = set()
-        deduped = []
-        for r in results:
-            k = r["path"].lower()
-            if k not in seen:
-                seen.add(k)
-                deduped.append(r)
-        deduped.sort(key=lambda x: x["display"].lower())
-        self.after(0, lambda: self._populate(deduped))
-
-    def _refresh_folders_lbl(self):
-        folders = user_config.get_scan_folders()
-        if folders:
-            self._folders_lbl.config(
-                text="  ·  ".join(pathlib.Path(f).name for f in folders))
-        else:
-            self._folders_lbl.config(text="none — add a folder to search more locations")
-
-    def _populate(self, results):
-        # Clear old rows
-        for w in self._inner.winfo_children():
-            w.destroy()
-        self._results = results
-        self._visible = results
-        self._vars = []
-        self._name_vars = []
-        existing = set(user_config.get_apps().keys())
-        for r in results:
-            v = tk.BooleanVar(value=False)
-            v.trace_add("write", self._update_count)
-            self._vars.append(v)
-            nv = tk.StringVar(value=r["name"])
-            self._name_vars.append(nv)
-            self._make_row(self._inner, r, v, nv, r["name"] in existing)
-        extra = len(user_config.get_scan_folders())
-        suffix = f" + {extra} extra folder(s)" if extra else ""
-        self._status.config(text=f"Found {len(results)} apps{suffix}")
-        self._add_btn.config(state="normal")
-        self._update_count()
-
-    def _make_row(self, parent, r, var, name_var, already_added):
-        BG = "#2a2a3e"; FG = "#cdd6f4"; MUTED = "#585b70"; GRN = "#a6e3a1"
-        ENTRY_BG = "#1e1e2e"
-        row = tk.Frame(parent, bg=BG, pady=3)
-        row.pack(fill="x", padx=4, pady=1)
-        cb = tk.Checkbutton(row, variable=var, bg=BG, activebackground=BG,
-                            selectcolor="#313244", fg=FG,
-                            disabledforeground=MUTED,
-                            state="disabled" if already_added else "normal")
-        cb.pack(side="left")
-        info = tk.Frame(row, bg=BG)
-        info.pack(side="left", fill="x", expand=True)
-        tk.Label(info, text=r["display"], bg=BG,
-                 fg=MUTED if already_added else FG,
-                 font=("Segoe UI Semibold", 9), anchor="w").pack(anchor="w")
-        if already_added:
-            tk.Label(info, text="  ✓ already added", bg=BG, fg=MUTED,
-                     font=("Segoe UI", 8), anchor="w").pack(anchor="w")
-        else:
-            name_row = tk.Frame(info, bg=BG)
-            name_row.pack(anchor="w", fill="x")
-            tk.Label(name_row, text="  voice name:", bg=BG, fg=GRN,
-                     font=("Segoe UI", 8)).pack(side="left")
-            tk.Entry(name_row, textvariable=name_var, width=20,
-                     bg=ENTRY_BG, fg=FG, insertbackground=FG,
-                     relief="flat", font=("Segoe UI", 8), bd=2).pack(
-                side="left", padx=(4, 0))
-
-    def _filter(self):
-        query = self._search_var.get().lower()
-        for widget in self._inner.winfo_children():
-            widget.destroy()
-        existing = set(user_config.get_apps().keys())
-        self._visible = [r for r in self._results
-                         if query in r["display"].lower() or query in r["name"]]
-        self._vars = []
-        self._name_vars = []
-        for r in self._visible:
-            v = tk.BooleanVar(value=False)
-            v.trace_add("write", self._update_count)
-            self._vars.append(v)
-            nv = tk.StringVar(value=r["name"])
-            self._name_vars.append(nv)
-            self._make_row(self._inner, r, v, nv, r["name"] in existing)
-        self._update_count()
-
-    def _update_count(self, *_):
-        n = sum(v.get() for v in self._vars)
-        self._count_lbl.config(text=f"{n} selected" if n else "")
-
-    def _add_selected(self):
-        selected = [(r, nv.get().strip().lower())
-                    for r, v, nv in zip(self._visible, self._vars, self._name_vars)
-                    if v.get()]
-        if not selected:
-            messagebox.showwarning("Nothing selected",
-                                   "Tick at least one app to add.", parent=self)
-            return
-        # Validate names
-        bad = [name for _, name in selected if not name]
-        if bad:
-            messagebox.showwarning("Empty name",
-                                   "One or more voice names are empty. "
-                                   "Please fill them in.", parent=self)
-            return
-        # Check for name conflicts
-        existing = user_config.get_apps()
-        conflicts = [name for _, name in selected if name in existing]
-        if conflicts:
-            names = ", ".join(f'"{n}"' for n in conflicts)
-            if not messagebox.askyesno(
-                    "Overwrite?",
-                    f"These voice names already exist: {names}\n\nOverwrite them?",
-                    parent=self):
-                return
-        for r, name in selected:
-            user_config.add_entry(name, r["path"], r["proc"])
-        messagebox.showinfo("Done",
-                            f"Added {len(selected)} app(s).\n\n" +
-                            "\n".join(f'  • {r["display"]} → "{name}"'
-                                      for r, name in selected),
-                            parent=self)
-        self.destroy()
-
-
-# ── Main app manager window ───────────────────────────────────────────────────
-
-class AppManagerWindow(tk.Toplevel):
-
-    def __init__(self, master: tk.Misc):
-        super().__init__(master)
-        self.title("Voice Commands — App Manager")
-        self.resizable(False, False)
-        self.configure(bg="#1e1e2e")
+    def __init__(self, parent):
+        super().__init__(parent, bg=BG)
+        self._apps  = {}
+        self._procs = {}
+        self._scan_results   = []
+        self._scan_visible   = []
+        self._scan_vars      = []
+        self._scan_name_vars = []
         self._build_ui()
         self._reload()
+
+    # ── Widget helpers ────────────────────────────────────────────────────────
+
+    def _btn(self, parent, text, cmd, color=ACC, **kw):
+        return tk.Button(parent, text=text, command=cmd,
+                         bg=color, fg="#fff", activebackground=color,
+                         activeforeground="#fff", relief="flat",
+                         font=("Segoe UI Semibold", 9),
+                         padx=10, pady=5, cursor="hand2", bd=0, **kw)
+
+    def _inp(self, parent, width=42):
+        return tk.Entry(parent, width=width, bg=ENTRY_BG, fg=FG,
+                        insertbackground=FG, relief="flat",
+                        font=("Segoe UI", 10), bd=4)
+
+    def _lbl(self, parent, text, **kw):
+        kw.setdefault("fg", FG)
+        kw.setdefault("font", ("Segoe UI", 9))
+        return tk.Label(parent, text=text, bg=parent["bg"], **kw)
+
+    def _section(self, parent, title):
+        f = tk.Frame(parent, bg=BG)
+        tk.Label(f, text=title, bg=BG, fg=ACC,
+                 font=("Segoe UI Semibold", 10)).pack(anchor="w")
+        tk.Frame(f, bg=ACC, height=1).pack(fill="x", pady=(2, 6))
+        return f
 
     # ── Layout ────────────────────────────────────────────────────────────────
 
     def _build_ui(self):
-        BG       = "#1e1e2e"
-        CARD     = "#2a2a3e"
-        ACC      = "#7c6af7"
-        FG       = "#cdd6f4"
-        ENTRY_BG = "#313244"
-        RED      = "#f38ba8"
-        MUTED    = "#585b70"
-        GRN      = "#a6e3a1"
+        self._main_page = tk.Frame(self, bg=BG)
+        self._scan_page = tk.Frame(self, bg=BG)
+        self._build_main_page(self._main_page)
+        self._build_scan_page(self._scan_page)
+        self._main_page.pack(fill="both", expand=True)
 
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure("TCombobox",
-                        fieldbackground=ENTRY_BG, background=CARD,
-                        foreground=FG, selectbackground=ACC, arrowcolor=FG)
-        style.map("TCombobox", fieldbackground=[("readonly", ENTRY_BG)])
-
-        def lbl(parent, text, **kw):
-            return tk.Label(parent, text=text, bg=BG, fg=FG,
-                            font=("Segoe UI", 9), **kw)
-
-        def inp(parent, width=42):
-            return tk.Entry(parent, width=width, bg=ENTRY_BG, fg=FG,
-                            insertbackground=FG, relief="flat",
-                            font=("Segoe UI", 10), bd=4)
-
-        def btn(parent, text, cmd, color=ACC):
-            return tk.Button(parent, text=text, command=cmd,
-                             bg=color, fg="#ffffff", activebackground=color,
-                             activeforeground="#ffffff", relief="flat",
-                             font=("Segoe UI Semibold", 9),
-                             padx=10, pady=5, cursor="hand2", bd=0)
-
-        def section(text):
-            f = tk.Frame(self, bg=BG)
-            tk.Label(f, text=text, bg=BG, fg=ACC,
-                     font=("Segoe UI Semibold", 10)).pack(anchor="w")
-            tk.Frame(f, bg=ACC, height=1).pack(fill="x", pady=(2, 6))
-            return f
-
+    def _build_main_page(self, page):
         PAD = 12
 
-        # Config path info
-        tk.Label(self, text=f"Config: {user_config.config_path()}",
+        tk.Label(page, text=f"Config: {user_config.config_path()}",
                  bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
             fill="x", padx=PAD, pady=(PAD, 0))
 
-        # ── Quick-add buttons row ─────────────────────────────────────────────
-        quick_row = tk.Frame(self, bg=BG)
-        quick_row.pack(fill="x", padx=PAD, pady=(8, 0))
-        btn(quick_row, "📂  Browse for App",
-            self._browse_exe, color=MUTED).pack(side="left")
-        btn(quick_row, "🌐  Add Website",
-            self._add_website, color=MUTED).pack(side="left", padx=(8, 0))
-        btn(quick_row, "📁  Add Folder",
-            self._add_folder, color=MUTED).pack(side="left", padx=(8, 0))
-        btn(quick_row, "🎮  Add Steam Game",
-            self._add_steam_game, color=MUTED).pack(side="left", padx=(8, 0))
-        btn(quick_row, "🔍  Scan Installed Apps",
-            self._open_scan, color=MUTED).pack(side="left", padx=(8, 0))
+        # Quick-add row
+        quick = tk.Frame(page, bg=BG)
+        quick.pack(fill="x", padx=PAD, pady=(8, 0))
+        self._btn(quick, "📂  Browse for App",    self._browse_exe,     MUTED).pack(side="left")
+        self._btn(quick, "🌐  Add Website",        self._add_website,    MUTED).pack(side="left", padx=(8, 0))
+        self._btn(quick, "📁  Add Folder",         self._add_folder,     MUTED).pack(side="left", padx=(8, 0))
+        self._btn(quick, "🎮  Add Steam Game",     self._add_steam_game, MUTED).pack(side="left", padx=(8, 0))
+        self._btn(quick, "🔍  Scan Installed Apps",self._go_scan,        MUTED).pack(side="left", padx=(8, 0))
 
-        # ── Add ───────────────────────────────────────────────────────────────
-        add_sec = section("➕  Add / Edit Entry")
-        add_sec.pack(fill="x", padx=PAD, pady=(6, 0))
-
+        # Add / Edit
+        add_sec = self._section(page, "➕  Add / Edit Entry")
+        add_sec.pack(fill="x", padx=PAD, pady=(8, 0))
         add_card = tk.Frame(add_sec, bg=CARD, padx=10, pady=10)
         add_card.pack(fill="x")
 
-        lbl(add_card, "Voice command name  (e.g. notepad)").grid(
-            row=0, column=0, sticky="w")
-        lbl(add_card, "Exe / path  (e.g. notepad.exe or full path)").grid(
-            row=0, column=1, sticky="w", padx=(10, 0))
-        lbl(add_card, "Process name  (e.g. notepad.exe)").grid(
-            row=0, column=2, sticky="w", padx=(10, 0))
+        self._lbl(add_card, "Voice command name").grid(row=0, column=0, sticky="w")
+        self._lbl(add_card, "Exe / path  (or steam:// URL)").grid(row=0, column=1, sticky="w", padx=(10,0))
+        self._lbl(add_card, "Process name  (e.g. notepad.exe)").grid(row=0, column=2, sticky="w", padx=(10,0))
 
-        self.e_name = inp(add_card, 18)
-        self.e_path = inp(add_card, 38)
-        self.e_proc = inp(add_card, 26)
-
+        self.e_name = self._inp(add_card, 18)
+        self.e_path = self._inp(add_card, 38)
+        self.e_proc = self._inp(add_card, 26)
         self.e_name.grid(row=1, column=0, sticky="ew", pady=(2, 0))
         self.e_path.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=(2, 0))
         self.e_proc.grid(row=1, column=2, sticky="ew", padx=(10, 0), pady=(2, 0))
-
-        btn(add_card, "Add Entry", self._on_add).grid(
+        self._btn(add_card, "Add Entry", self._on_add).grid(
             row=2, column=0, columnspan=3, pady=(10, 0), sticky="e")
 
-        # ── Delete ────────────────────────────────────────────────────────────
-        del_sec = section("🗑  Delete Entry")
+        # Delete / Rename
+        del_sec = self._section(page, "🗑  Delete / Rename Entry")
         del_sec.pack(fill="x", padx=PAD, pady=(PAD, 0))
-
         del_card = tk.Frame(del_sec, bg=CARD, padx=10, pady=10)
         del_card.pack(fill="x")
 
-        lbl(del_card, "Select entry to delete:").pack(anchor="w")
+        self._lbl(del_card, "Select entry:").pack(anchor="w")
+
+        style = ttk.Style(del_card); style.theme_use("clam")
+        style.configure("TCombobox", fieldbackground=ENTRY_BG, background=CARD,
+                        foreground=FG, arrowcolor=FG)
+        style.map("TCombobox", fieldbackground=[("readonly", ENTRY_BG)])
 
         self.combo_var = tk.StringVar()
         self.combo = ttk.Combobox(del_card, textvariable=self.combo_var,
-                                  state="readonly", width=52,
-                                  font=("Segoe UI", 10))
+                                  state="readonly", width=52, font=("Segoe UI", 10))
         self.combo.pack(fill="x", pady=(4, 8))
 
         self.preview = tk.Label(del_card, text="", bg=CARD, fg="#a6adc8",
@@ -605,124 +273,393 @@ class AppManagerWindow(tk.Toplevel):
         self.preview.pack(fill="x", pady=(0, 8))
         self.combo.bind("<<ComboboxSelected>>", self._on_select)
 
-        # Rename row
         rename_row = tk.Frame(del_card, bg=CARD)
         rename_row.pack(fill="x", pady=(0, 8))
-        lbl(rename_row, "Rename voice command to:").pack(side="left")
-        self.e_rename = inp(rename_row, width=20)
+        self._lbl(rename_row, "Rename to:").pack(side="left")
+        self.e_rename = self._inp(rename_row, width=20)
         self.e_rename.pack(side="left", padx=(8, 8))
-        btn(rename_row, "Rename", self._on_rename, color=ACC).pack(side="left")
+        self._btn(rename_row, "Rename", self._on_rename).pack(side="left")
 
-        btn(del_card, "Delete Selected", self._on_delete, color=RED).pack(anchor="e")
+        self._btn(del_card, "Delete Selected", self._on_delete, RED).pack(anchor="e")
 
-        # Status bar
-        self.status = tk.Label(self, text="", bg=BG, fg=GRN,
-                               font=("Segoe UI", 9), anchor="w")
-        self.status.pack(fill="x", padx=PAD, pady=(PAD, PAD))
+        self._status_lbl = tk.Label(page, text="", bg=BG, fg=GRN,
+                                    font=("Segoe UI", 9), anchor="w")
+        self._status_lbl.pack(fill="x", padx=PAD, pady=(PAD, PAD))
 
-    # ── Browse / scan ─────────────────────────────────────────────────────────
+    def _build_scan_page(self, page):
+        # Header
+        hdr = tk.Frame(page, bg=BG)
+        hdr.pack(fill="x", padx=12, pady=(8, 0))
+        self._btn(hdr, "←  Back", self._go_main, MUTED).pack(side="left")
+        tk.Label(hdr, text="🔍  Scan Installed Apps", bg=BG, fg=ACC,
+                 font=("Segoe UI Semibold", 12)).pack(side="left", padx=(12, 0))
+
+        self._scan_status = tk.Label(page, text="", bg=BG, fg=MUTED,
+                                     font=("Segoe UI", 9))
+        self._scan_status.pack()
+
+        # Search
+        sr = tk.Frame(page, bg=BG)
+        sr.pack(fill="x", padx=12, pady=(6, 0))
+        tk.Label(sr, text="Filter:", bg=BG, fg=FG, font=("Segoe UI", 9)).pack(side="left")
+        self._scan_search = tk.StringVar()
+        self._scan_search.trace_add("write", lambda *_: self._filter_scan())
+        tk.Entry(sr, textvariable=self._scan_search, bg=ENTRY_BG, fg=FG,
+                 insertbackground=FG, relief="flat", font=("Segoe UI", 10), bd=4).pack(
+            side="left", fill="x", expand=True, padx=(6, 0))
+
+        # Extra folders
+        fr = tk.Frame(page, bg=BG)
+        fr.pack(fill="x", padx=12, pady=(4, 0))
+        tk.Label(fr, text="Extra search folders:", bg=BG, fg=MUTED,
+                 font=("Segoe UI Semibold", 8)).pack(side="left")
+        self._folders_lbl = tk.Label(fr, text="", bg=BG, fg=FG,
+                                     font=("Segoe UI", 8), anchor="w")
+        self._folders_lbl.pack(side="left", padx=(6, 0), fill="x", expand=True)
+        self._btn(fr, "➕ Add Folder",  self._add_scan_folder,   MUTED).pack(side="left", padx=(8, 0))
+        self._btn(fr, "✕ Clear",        self._clear_scan_folders, MUTED).pack(side="left", padx=(4, 0))
+        self._refresh_folders_lbl()
+
+        # Results list
+        lf = tk.Frame(page, bg=CARD)
+        lf.pack(fill="both", expand=True, padx=12, pady=8)
+
+        self._scan_canvas = tk.Canvas(lf, bg=CARD, highlightthickness=0)
+        sb = ttk.Scrollbar(lf, orient="vertical", command=self._scan_canvas.yview)
+        self._scan_canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._scan_canvas.pack(side="left", fill="both", expand=True)
+
+        self._scan_inner = tk.Frame(self._scan_canvas, bg=CARD)
+        cwin = self._scan_canvas.create_window((0, 0), window=self._scan_inner, anchor="nw")
+        self._scan_inner.bind("<Configure>",
+            lambda e: self._scan_canvas.configure(scrollregion=self._scan_canvas.bbox("all")))
+        self._scan_canvas.bind("<Configure>",
+            lambda e: self._scan_canvas.itemconfig(cwin, width=e.width))
+        for w in (self._scan_canvas, self._scan_inner):
+            w.bind("<MouseWheel>",
+                   lambda e: self._scan_canvas.yview_scroll(-1*(e.delta//120), "units"))
+
+        # Bottom row
+        bot = tk.Frame(page, bg=BG)
+        bot.pack(fill="x", padx=12, pady=(0, 10))
+
+        self._btn(bot, "Select All",   self._sel_all_scan, MUTED).pack(side="left")
+        self._btn(bot, "Deselect All",
+                  lambda: [v.set(False) for v in self._scan_vars],
+                  MUTED).pack(side="left", padx=(6, 0))
+
+        self._scan_count_lbl = tk.Label(bot, text="", bg=BG, fg=GRN, font=("Segoe UI", 9))
+        self._scan_count_lbl.pack(side="right", padx=(0, 10))
+
+        self._btn(bot, "➕  Add Selected", self._add_scan_selected).pack(side="right")
+
+    # ── Navigation ────────────────────────────────────────────────────────────
+
+    def _go_scan(self):
+        self._scan_search.set("")
+        self._scan_status.config(text="Scanning registry…")
+        for w in self._scan_inner.winfo_children():
+            w.destroy()
+        self._main_page.pack_forget()
+        self._scan_page.pack(fill="both", expand=True)
+        threading.Thread(target=self._do_scan, daemon=True).start()
+
+    def _go_main(self):
+        self._scan_page.pack_forget()
+        self._main_page.pack(fill="both", expand=True)
+        self._reload()
+
+    # ── Inline overlay (for small add-forms) ──────────────────────────────────
+
+    def _show_overlay(self, title, icon, fields, on_submit):
+        """Cover the widget with a centred form card.
+        fields = [(label, hint), ...]
+        on_submit(list_of_str_values) called on OK; overlay closes on Cancel/Escape."""
+        overlay = tk.Frame(self, bg="#0d0d1a")
+        overlay.place(x=0, y=0, relwidth=1, relheight=1)
+        overlay.lift()
+
+        card = tk.Frame(overlay, bg=CARD, padx=24, pady=20)
+        card.place(relx=0.5, rely=0.4, anchor="center")
+
+        tk.Label(card, text=f"{icon}  {title}", bg=CARD, fg=ACC,
+                 font=("Segoe UI Semibold", 11)).pack(pady=(0, 12))
+
+        entries = []
+        for label, hint in fields:
+            f = tk.Frame(card, bg=CARD)
+            f.pack(fill="x", pady=(0, 8))
+            tk.Label(f, text=label, bg=CARD, fg=FG,
+                     font=("Segoe UI", 9)).pack(anchor="w")
+            e = tk.Entry(f, width=44, bg=ENTRY_BG, fg=FG,
+                         insertbackground=FG, relief="flat",
+                         font=("Segoe UI", 10), bd=4)
+            e.pack(fill="x")
+            if hint:
+                tk.Label(f, text=hint, bg=CARD, fg=MUTED,
+                         font=("Segoe UI", 8)).pack(anchor="w")
+            entries.append(e)
+
+        btn_row = tk.Frame(card, bg=CARD)
+        btn_row.pack(fill="x", pady=(8, 0))
+
+        def _ok(_e=None):
+            vals = [e.get() for e in entries]
+            overlay.destroy()
+            on_submit(vals)
+
+        def _cancel(_e=None):
+            overlay.destroy()
+
+        for e in entries:
+            e.bind("<Return>", _ok)
+        overlay.bind("<Escape>", _cancel)
+
+        self._btn(btn_row, "OK",     _ok,     ACC ).pack(side="right")
+        self._btn(btn_row, "Cancel", _cancel, MUTED).pack(side="right", padx=(0, 8))
+        entries[0].focus_set()
+
+    # ── Quick-add handlers ────────────────────────────────────────────────────
 
     def _browse_exe(self):
         path = filedialog.askopenfilename(
             title="Select application executable",
             filetypes=[("Executables", "*.exe"), ("All files", "*.*")],
-            parent=self,
+            parent=self.winfo_toplevel(),
         )
         if not path:
             return
         p = pathlib.Path(path)
-        voice_name = _to_voice_name(p.stem)
-        proc = p.name
-        self.e_name.delete(0, "end"); self.e_name.insert(0, voice_name)
+        self.e_name.delete(0, "end"); self.e_name.insert(0, _to_voice_name(p.stem))
         self.e_path.delete(0, "end"); self.e_path.insert(0, str(p))
-        self.e_proc.delete(0, "end"); self.e_proc.insert(0, proc)
-        self._flash(f'Auto-filled from {p.name} — edit the name if needed, then click Add Entry.')
+        self.e_proc.delete(0, "end"); self.e_proc.insert(0, p.name)
+        self._flash(f"Auto-filled from {p.name} — edit the name if needed, then click Add Entry.")
 
     def _add_website(self):
-        dlg = _SimpleDialog(self,
-            title="Add Website",
-            icon="🌐",
-            fields=[
-                ("Voice command name", "e.g.  youtube"),
-                ("URL", "e.g.  https://www.youtube.com"),
-            ])
-        self.wait_window(dlg)
-        if not dlg.result:
-            return
-        name, url = dlg.result
-        name = name.strip().lower()
-        url  = url.strip()
-        if not name or not url:
-            return
-        if not url.startswith(("http://", "https://")):
-            url = "https://" + url
-        user_config.add_entry(name, url, "")   # empty proc — open-only
-        self._reload()
-        self._flash(f'✓  Added website "{name}" → {url}')
+        def on_submit(vals):
+            name, url = vals
+            name = name.strip().lower(); url = url.strip()
+            if not name or not url:
+                return
+            if not url.startswith(("http://", "https://")):
+                url = "https://" + url
+            user_config.add_entry(name, url, "")
+            self._reload()
+            self._flash(f'✓  Added website "{name}" → {url}')
+        self._show_overlay("Add Website", "🌐", [
+            ("Voice command name", "e.g.  youtube"),
+            ("URL", "e.g.  https://www.youtube.com"),
+        ], on_submit)
 
     def _add_folder(self):
-        folder = filedialog.askdirectory(title="Select folder to open", parent=self)
+        folder = filedialog.askdirectory(title="Select folder to open",
+                                         parent=self.winfo_toplevel())
         if not folder:
             return
-        # Suggest a name from the folder's last component
         suggested = pathlib.Path(folder).name.lower().replace("_", " ").replace("-", " ")
-        dlg = _SimpleDialog(self,
-            title="Add Folder",
-            icon="📁",
-            fields=[("Voice command name", f"e.g.  {suggested}")],
-            prefill=[suggested])
-        self.wait_window(dlg)
-        if not dlg.result:
-            return
-        name = dlg.result[0].strip().lower()
-        if not name:
-            return
-        user_config.add_entry(name, folder, "explorer.exe")
-        self._reload()
-        self._flash(f'✓  Added folder "{name}" → {folder}')
+
+        def on_submit(vals):
+            name = vals[0].strip().lower()
+            if not name:
+                return
+            user_config.add_entry(name, folder, "explorer.exe")
+            self._reload()
+            self._flash(f'✓  Added folder "{name}" → {folder}')
+        self._show_overlay("Add Folder", "📁", [
+            ("Voice command name  (pre-filled from folder name — change if needed)", ""),
+        ], on_submit)
+        # pre-fill after overlay is drawn
+        self.after(50, lambda: self._prefill_overlay(suggested))
+
+    def _prefill_overlay(self, text: str):
+        """Try to pre-fill the first entry in any visible overlay."""
+        for child in self.winfo_children():
+            if isinstance(child, tk.Frame) and str(child.place_info()):
+                for card in child.winfo_children():
+                    if isinstance(card, tk.Frame):
+                        for f in card.winfo_children():
+                            if isinstance(f, tk.Frame):
+                                for w in f.winfo_children():
+                                    if isinstance(w, tk.Entry):
+                                        w.delete(0, "end")
+                                        w.insert(0, text)
+                                        return
 
     def _add_steam_game(self):
-        dlg = _SimpleDialog(self,
-            title="Add Steam Game",
-            icon="🎮",
-            fields=[
-                ("Voice command name", "e.g.  cyberpunk"),
-                ("Steam App ID",
-                 "Find it on store.steampowered.com — it's the number in the URL.\n"
-                 "e.g. for Half-Life 2 the URL is /app/220/ so the ID is  220"),
-            ])
-        self.wait_window(dlg)
-        if not dlg.result:
-            return
-        name, app_id = dlg.result
-        name   = name.strip().lower()
-        app_id = app_id.strip()
-        if not name or not app_id:
-            return
-        if not app_id.isdigit():
-            messagebox.showwarning("Invalid ID",
-                                   "Steam App ID must be a number (e.g. 730).",
-                                   parent=self)
-            return
-        path = f"steam://rungameid/{app_id}"
-        user_config.add_entry(name, path, "steam.exe")
-        self._reload()
-        self._flash(f'✓  Added Steam game "{name}" (App ID {app_id})')
+        def on_submit(vals):
+            name, app_id = vals
+            name = name.strip().lower(); app_id = app_id.strip()
+            if not name or not app_id:
+                return
+            if not app_id.isdigit():
+                messagebox.showwarning("Invalid ID",
+                                       "Steam App ID must be a number (e.g. 730).",
+                                       parent=self.winfo_toplevel())
+                return
+            user_config.add_entry(name, f"steam://rungameid/{app_id}", "steam.exe")
+            self._reload()
+            self._flash(f'✓  Added Steam game "{name}" (App ID {app_id})')
+        self._show_overlay("Add Steam Game", "🎮", [
+            ("Voice command name", "e.g.  cyberpunk"),
+            ("Steam App ID",
+             "Find it in the store URL: store.steampowered.com/app/730/ → ID is  730"),
+        ], on_submit)
 
-    def _open_scan(self):
-        dlg = ScanDialog(self)
-        dlg.grab_set()
-        self.wait_window(dlg)
-        self._reload()
+    # ── Scan logic ────────────────────────────────────────────────────────────
 
-    # ── Logic ─────────────────────────────────────────────────────────────────
+    def _do_scan(self):
+        results = _scan_registry()
+        for folder in user_config.get_scan_folders():
+            results += _scan_folder(folder)
+        seen = set(); deduped = []
+        for r in results:
+            k = r["path"].lower()
+            if k not in seen:
+                seen.add(k); deduped.append(r)
+        deduped.sort(key=lambda x: x["display"].lower())
+        self.after(0, lambda: self._populate_scan(deduped))
+
+    def _populate_scan(self, results):
+        for w in self._scan_inner.winfo_children():
+            w.destroy()
+        self._scan_results  = results
+        self._scan_visible  = results
+        self._scan_vars     = []
+        self._scan_name_vars = []
+        existing = set(user_config.get_apps().keys())
+        for r in results:
+            v  = tk.BooleanVar(value=False)
+            nv = tk.StringVar(value=r["name"])
+            v.trace_add("write", self._update_scan_count)
+            self._scan_vars.append(v)
+            self._scan_name_vars.append(nv)
+            self._make_scan_row(r, v, nv, r["name"] in existing)
+        extra = len(user_config.get_scan_folders())
+        suffix = f" + {extra} extra folder(s)" if extra else ""
+        self._scan_status.config(text=f"Found {len(results)} apps{suffix}")
+        self._update_scan_count()
+
+    def _make_scan_row(self, r, var, name_var, already_added):
+        row = tk.Frame(self._scan_inner, bg=CARD, pady=3)
+        row.pack(fill="x", padx=4, pady=1)
+        cb = tk.Checkbutton(row, variable=var, bg=CARD, activebackground=CARD,
+                            selectcolor=ENTRY_BG, fg=FG, disabledforeground=MUTED,
+                            state="disabled" if already_added else "normal")
+        cb.pack(side="left")
+        info = tk.Frame(row, bg=CARD)
+        info.pack(side="left", fill="x", expand=True)
+        tk.Label(info, text=r["display"], bg=CARD,
+                 fg=MUTED if already_added else FG,
+                 font=("Segoe UI Semibold", 9), anchor="w").pack(anchor="w")
+        if already_added:
+            tk.Label(info, text="  ✓ already added", bg=CARD, fg=MUTED,
+                     font=("Segoe UI", 8)).pack(anchor="w")
+        else:
+            nr = tk.Frame(info, bg=CARD)
+            nr.pack(anchor="w", fill="x")
+            tk.Label(nr, text="  voice name:", bg=CARD, fg=GRN,
+                     font=("Segoe UI", 8)).pack(side="left")
+            tk.Entry(nr, textvariable=name_var, width=20, bg=ENTRY_BG, fg=FG,
+                     insertbackground=FG, relief="flat",
+                     font=("Segoe UI", 8), bd=2).pack(side="left", padx=(4, 0))
+        scroll = lambda e: self._scan_canvas.yview_scroll(-1*(e.delta//120), "units")
+        for w in (row, cb, info):
+            w.bind("<MouseWheel>", scroll)
+
+    def _filter_scan(self):
+        query = self._scan_search.get().lower()
+        for w in self._scan_inner.winfo_children():
+            w.destroy()
+        existing = set(user_config.get_apps().keys())
+        self._scan_visible  = [r for r in self._scan_results
+                                if query in r["display"].lower() or query in r["name"]]
+        self._scan_vars     = []
+        self._scan_name_vars = []
+        for r in self._scan_visible:
+            v  = tk.BooleanVar(value=False)
+            nv = tk.StringVar(value=r["name"])
+            v.trace_add("write", self._update_scan_count)
+            self._scan_vars.append(v)
+            self._scan_name_vars.append(nv)
+            self._make_scan_row(r, v, nv, r["name"] in existing)
+        self._update_scan_count()
+
+    def _update_scan_count(self, *_):
+        n = sum(v.get() for v in self._scan_vars)
+        self._scan_count_lbl.config(text=f"{n} selected" if n else "")
+
+    def _sel_all_scan(self):
+        existing = set(user_config.get_apps().keys())
+        for v, r in zip(self._scan_vars, self._scan_visible):
+            if r["name"] not in existing:
+                v.set(True)
+
+    def _add_scan_folder(self):
+        folder = filedialog.askdirectory(
+            title="Select extra folder (e.g. D:\\SteamLibrary\\steamapps\\common)",
+            parent=self.winfo_toplevel())
+        if not folder:
+            return
+        folders = user_config.get_scan_folders()
+        if folder not in folders:
+            folders.append(folder)
+            user_config.set_scan_folders(folders)
+        self._refresh_folders_lbl()
+        self._scan_status.config(text="Rescanning with new folder…")
+        for w in self._scan_inner.winfo_children():
+            w.destroy()
+        threading.Thread(target=self._do_scan, daemon=True).start()
+
+    def _clear_scan_folders(self):
+        user_config.set_scan_folders([])
+        self._refresh_folders_lbl()
+        self._scan_status.config(text="Rescanning…")
+        for w in self._scan_inner.winfo_children():
+            w.destroy()
+        threading.Thread(target=self._do_scan, daemon=True).start()
+
+    def _refresh_folders_lbl(self):
+        folders = user_config.get_scan_folders()
+        self._folders_lbl.config(
+            text=("  ·  ".join(pathlib.Path(f).name for f in folders))
+                 if folders else "none — add a folder to search other drives")
+
+    def _add_scan_selected(self):
+        selected = [(r, nv.get().strip().lower())
+                    for r, v, nv in zip(self._scan_visible, self._scan_vars, self._scan_name_vars)
+                    if v.get()]
+        if not selected:
+            messagebox.showwarning("Nothing selected", "Tick at least one app to add.",
+                                   parent=self.winfo_toplevel())
+            return
+        if any(not name for _, name in selected):
+            messagebox.showwarning("Empty name", "One or more voice names are empty.",
+                                   parent=self.winfo_toplevel())
+            return
+        existing = user_config.get_apps()
+        conflicts = [name for _, name in selected if name in existing]
+        if conflicts:
+            names = ", ".join(f'"{n}"' for n in conflicts)
+            if not messagebox.askyesno("Overwrite?",
+                    f"These voice names already exist: {names}\n\nOverwrite them?",
+                    parent=self.winfo_toplevel()):
+                return
+        for r, name in selected:
+            user_config.add_entry(name, r["path"], r["proc"])
+        messagebox.showinfo("Done",
+                            f"Added {len(selected)} app(s).\n\n" +
+                            "\n".join(f'  • {r["display"]} → "{name}"'
+                                      for r, name in selected),
+                            parent=self.winfo_toplevel())
+        self._go_main()
+
+    # ── Main-page logic ───────────────────────────────────────────────────────
 
     def _reload(self):
-        apps  = user_config.get_apps()
-        procs = user_config.get_proc_names()
-        self._apps  = apps
-        self._procs = procs
-        names = sorted(apps.keys())
+        self._apps  = user_config.get_apps()
+        self._procs = user_config.get_proc_names()
+        names = sorted(self._apps.keys())
         self.combo["values"] = names
         if names:
             self.combo.set(names[0])
@@ -730,8 +667,7 @@ class AppManagerWindow(tk.Toplevel):
             self.e_rename.delete(0, "end")
             self.e_rename.insert(0, names[0])
         else:
-            self.combo.set("")
-            self.preview.config(text="")
+            self.combo.set(""); self.preview.config(text="")
             self.e_rename.delete(0, "end")
 
     def _show_preview(self, name: str):
@@ -745,72 +681,64 @@ class AppManagerWindow(tk.Toplevel):
         self.e_rename.delete(0, "end")
         self.e_rename.insert(0, name)
 
-    def _flash(self, msg: str, color="#a6e3a1"):
-        self.status.config(text=msg, fg=color)
-        self.after(6000, lambda: self.status.config(text=""))
+    def _flash(self, msg: str, color=GRN):
+        self._status_lbl.config(text=msg, fg=color)
+        self.after(6000, lambda: self._status_lbl.config(text=""))
 
     def _on_add(self):
         name = self.e_name.get().strip().lower()
         path = self.e_path.get().strip()
         proc = self.e_proc.get().strip()
         if not name or not path or not proc:
-            messagebox.showwarning("Missing fields",
-                                   "Please fill in all three fields.", parent=self)
+            messagebox.showwarning("Missing fields", "Please fill in all three fields.",
+                                   parent=self.winfo_toplevel())
             return
-        if name in self._apps:
-            if not messagebox.askyesno("Overwrite?",
-                                       f'"{name}" already exists. Overwrite it?',
-                                       parent=self):
-                return
+        if name in self._apps and not messagebox.askyesno(
+                "Overwrite?", f'"{name}" already exists. Overwrite it?',
+                parent=self.winfo_toplevel()):
+            return
         user_config.add_entry(name, path, proc)
         self._reload()
-        self.e_name.delete(0, "end")
-        self.e_path.delete(0, "end")
-        self.e_proc.delete(0, "end")
+        for e in (self.e_name, self.e_path, self.e_proc):
+            e.delete(0, "end")
         self._flash(f'✓  Added "{name}".')
 
     def _on_rename(self):
-        old_name = self.combo_var.get()
-        new_name = self.e_rename.get().strip().lower()
-        if not old_name:
+        old = self.combo_var.get()
+        new = self.e_rename.get().strip().lower()
+        if not old or not new or new == old:
             return
-        if not new_name:
-            messagebox.showwarning("Empty name", "Please enter a new name.", parent=self)
+        if new in self._apps and not messagebox.askyesno(
+                "Overwrite?", f'"{new}" already exists. Overwrite it?',
+                parent=self.winfo_toplevel()):
             return
-        if new_name == old_name:
-            messagebox.showwarning("Same name", "The new name is the same as the current one.", parent=self)
-            return
-        if new_name in self._apps:
-            if not messagebox.askyesno("Overwrite?",
-                                       f'"{new_name}" already exists. Overwrite it?',
-                                       parent=self):
-                return
-        # Copy entry under new name, delete old
-        path = self._apps.get(old_name, "")
-        proc = self._procs.get(old_name, "")
-        user_config.delete_entry(old_name)
-        user_config.add_entry(new_name, path, proc)
+        user_config.delete_entry(old)
+        user_config.add_entry(new, self._apps.get(old, ""), self._procs.get(old, ""))
         self._reload()
-        self._flash(f'✓  Renamed "{old_name}" → "{new_name}".')
+        self._flash(f'✓  Renamed "{old}" → "{new}".')
 
     def _on_delete(self):
         name = self.combo_var.get()
         if not name:
             return
-        if not messagebox.askyesno("Confirm delete",
-                                   f'Delete "{name}" from your config?',
-                                   parent=self):
+        if not messagebox.askyesno("Confirm delete", f'Delete "{name}" from your config?',
+                                   parent=self.winfo_toplevel()):
             return
         user_config.delete_entry(name)
         self._reload()
-        self._flash(f'✓  Deleted "{name}".', color="#f38ba8")
+        self._flash(f'✓  Deleted "{name}".', color=RED)
 
 
-# ── Standalone entry point ────────────────────────────────────────────────────
+# Backward-compat alias
+AppManagerWindow = AppManagerWidget
+
+
+# ── Standalone ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.withdraw()
-    win = AppManagerWindow(root)
-    win.protocol("WM_DELETE_WINDOW", root.destroy)
+    root.title("App Manager")
+    root.configure(bg=BG)
+    root.geometry("960x680")
+    AppManagerWidget(root).pack(fill="both", expand=True)
     root.mainloop()
