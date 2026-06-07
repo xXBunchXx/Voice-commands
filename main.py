@@ -422,14 +422,14 @@ _overlay: StatusOverlay | None = None
 # ── Main window ───────────────────────────────────────────────────────────────
 
 def main():
-    BG     = "#1e1e2e"
-    CARD   = "#2a2a3e"
-    ACC    = "#7c6af7"
-    FG     = "#cdd6f4"
-    GRN    = "#a6e3a1"
-    RED    = "#f38ba8"
-    MUTED  = "#585b70"
-    LOG_BG = "#11111b"
+    BG     = "#0a1020"
+    CARD   = "#0f1a2e"
+    ACC    = "#1a56db"
+    FG     = "#d4e0f0"
+    GRN    = "#4ade80"
+    RED    = "#f87171"
+    MUTED  = "#3d5470"
+    LOG_BG = "#060c17"
 
     global _root_ref, _overlay
     root = tk.Tk()
