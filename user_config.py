@@ -101,8 +101,8 @@ DEFAULT_COMMAND_WORDS: dict[str, str] = {
     # Engine
     "undo":           "undo",
     "diagnose":       "diagnose",
-    "stop_engine":    "close voice commands",
-    "restart_engine": "restart voice commands",
+    "stop_engine":    "close echo",
+    "restart_engine": "restart echo",
 }
 
 # Volume step words → percentage (integer 1-100)
