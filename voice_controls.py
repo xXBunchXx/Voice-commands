@@ -1001,6 +1001,9 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     _COMMAND_WORDS       = user_config.get_command_words()
     _VOLUME_STEPS        = user_config.get_volume_steps()
     _CONTEXT_COMMANDS    = user_config.get_context_commands()
+    _spoken_raw          = user_config.get_spoken_names()
+    _SPOKEN_NAMES        = _spoken_raw
+    _SPOKEN_TO_DISPLAY   = {v: k for k, v in _spoken_raw.items() if v}
 
     if stop_event is None:
         stop_event = _threading.Event()
