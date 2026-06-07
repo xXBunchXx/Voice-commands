@@ -583,7 +583,7 @@ class SettingsWidget(tk.Frame):
 
     def _show_cmd_editor(self, *, phrase="", context="browser",
                          value=None, old_phrase=None, old_context=None):
-        overlay = tk.Frame(self, bg="#0d0d1a")
+        overlay = tk.Frame(self, bg="#05080f")
         overlay.place(x=0, y=0, relwidth=1, relheight=1)
         overlay.lift()
         overlay.focus_set()
@@ -1044,7 +1044,7 @@ class SettingsWidget(tk.Frame):
             procs = []
         old_name = name if name else None
 
-        overlay = tk.Frame(self, bg="#0d0d1a")
+        overlay = tk.Frame(self, bg="#05080f")
         overlay.place(x=0, y=0, relwidth=1, relheight=1)
         overlay.lift()
         overlay.focus_set()
