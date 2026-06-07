@@ -9,7 +9,7 @@ import user_config
 
 BG       = "#0a1020"
 CARD     = "#0f1a2e"
-ACC      = "#1a56db"
+ACC      = "#0e307b"
 FG       = "#d4e0f0"
 ENTRY_BG = "#162033"
 MUTED    = "#3d5470"
