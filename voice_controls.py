@@ -98,6 +98,24 @@ def _proc_matches_context(proc: str, context: str) -> bool:
     return False
 
 
+def _execute_action(action) -> None:
+    """Execute a shortcut string or a macro dict."""
+    import time as _t
+    if isinstance(action, str):
+        keyboard.send(action)
+    elif isinstance(action, dict) and action.get("type") == "macro":
+        repeat = max(1, int(action.get("repeat", 1)))
+        for _ in range(repeat):
+            for step in action.get("steps", []):
+                stype = step.get("type", "press")
+                if stype == "press":
+                    keys = step.get("keys", "")
+                    if keys:
+                        keyboard.send(keys)
+                elif stype == "wait":
+                    _t.sleep(max(0, step.get("ms", 100)) / 1000.0)
+
+
 def _try_context_command(text: str) -> bool:
     """Try to run a context-sensitive command.
     Returns True if the phrase was recognised (whether or not context matched)."""
@@ -105,11 +123,15 @@ def _try_context_command(text: str) -> bool:
         return False
     proc    = _get_active_proc()
     targets = _CONTEXT_COMMANDS[text]
-    for context, shortcut in targets.items():
+    for context, action in targets.items():
         if _proc_matches_context(proc, context):
-            keyboard.send(shortcut)
+            try:
+                _execute_action(action)
+            except Exception as _ae:
+                print(f"⚠️  Action error ({text!r}): {_ae}")
             win_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
-            print(f"🖱  {text}  [{context}]  → {shortcut}  ({win_title})")
+            preview   = action if isinstance(action, str) else "macro"
+            print(f"🖱  {text}  [{context}]  → {preview}  ({win_title})")
             _status(f"{text.title()}  [{context}]")
             return True
     # Phrase recognised but context didn't match
