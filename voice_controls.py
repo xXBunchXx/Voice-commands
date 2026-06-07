@@ -1129,7 +1129,11 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                     continue
                 conf = average_confidence(result)
                 if conf >= CONFIDENCE_THRESHOLD:
-                    handle_command(text)
+                    if handle_command(text):
+                        # Ghost suppressor just tripped — flush Vosk's decoder
+                        # so the contaminated audio state doesn't bleed into the
+                        # next real command.
+                        rec.Reset()
                 else:
                     print(f"💤  Low confidence ({conf:.0%}): '{text}' — ignored")
             else:
