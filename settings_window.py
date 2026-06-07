@@ -1016,7 +1016,7 @@ class SettingsWidget(tk.Frame):
 
             top_row = tk.Frame(card, bg=CARD)
             top_row.pack(fill="x")
-            tk.Label(top_row, text=f"👥  {gname}", bg=CARD, fg=ACCENT_TEXT,
+            tk.Label(top_row, text=f"👥  {gname}", bg=CARD, fg=FG,
                      font=("Segoe UI Semibold", 11)).pack(side="left")
 
             _btn(top_row, "✏ Edit",
