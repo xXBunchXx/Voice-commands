@@ -1,4 +1,4 @@
-"""
+﻿"""
 Manages per-user config stored in %APPDATA%/Echo/config.json.
 
 Version scheme  A.B.C.D  (all integers, read left to right):
@@ -121,7 +121,7 @@ DEFAULT_APPS: dict[str, str] = {
     "notepad":    r"C:\Windows\notepad.exe",
     "command":    r"C:\Windows\System32\cmd.exe",
     "calculator": r"calc.exe",
-    "paint":      r"C:\Windows\System32\mspaint.exe",
+    "paint":      r"mspaint.exe",
     "task manager": r"C:\Windows\System32\Taskmgr.exe",
 }
 
