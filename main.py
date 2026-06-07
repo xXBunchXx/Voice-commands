@@ -433,6 +433,20 @@ def main():
     root.title(f"Echo  v{VERSION}")
     root.configure(bg=BG)
     root.geometry("960x740")
+
+    # Set window icon
+    _icon_img = _load_icon()
+    if _icon_img is not None:
+        try:
+            ico_path = _resource_path("icon.ico")
+            if ico_path.exists():
+                root.iconbitmap(str(ico_path))
+            else:
+                # Fallback: use PhotoImage from the PNG
+                _tk_icon = ImageTk.PhotoImage(_icon_img.resize((32, 32), Image.LANCZOS))
+                root.iconphoto(True, _tk_icon)
+        except Exception:
+            pass
     root.minsize(800, 600)
     root.resizable(True, True)
     root.protocol("WM_DELETE_WINDOW", lambda: _hide_window(root))
