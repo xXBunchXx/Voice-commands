@@ -1031,12 +1031,12 @@ def handle_command(text: str) -> bool:
     elif text in _cw_all("undo"):
         undo_close()
     elif text in _cw_all("stop_engine"):
-        print("🛑  Closing voice commands!")
-        _status("Stopping voice commands")
+        print("🛑  Closing Echo!")
+        _status("Stopping Echo")
         _stop_event.set()
     elif text in _cw_all("restart_engine"):
-        print("🔄  Restarting voice commands!")
-        _status("Restarting voice commands")
+        print("🔄  Restarting Echo!")
+        _status("Restarting Echo")
         _restart_requested = True
         _stop_event.set()
     elif words[0] == "volume" and len(words) == 3 and words[1] in ("up", "down"):
