@@ -218,7 +218,81 @@ class SettingsWidget(tk.Frame):
                              "top-right", "top-center", "top-left"]
                      ).grid(row=1, column=1, sticky="w", padx=(10, 0))
 
+        sec4 = _section(frame, "Desktop Shortcut")
+        sec4.pack(fill="x", padx=2, pady=(14, 0))
+        card4 = _card(sec4); card4.pack(fill="x")
+
+        shortcut_row = tk.Frame(card4, bg=CARD)
+        shortcut_row.pack(fill="x")
+
+        self._shortcut_var = tk.BooleanVar(value=False)
+
+        shortcut_btn = _btn(shortcut_row, "🖥  Create Desktop Shortcut",
+                            lambda: self._create_shortcut(),
+                            color=MUTED)
+        shortcut_btn.pack(side="right")
+
+        def _on_shortcut_toggle(*_):
+            if self._shortcut_var.get():
+                shortcut_btn.config(bg=ACC, cursor="hand2", state="normal")
+            else:
+                shortcut_btn.config(bg=MUTED, cursor="arrow", state="disabled")
+
+        tk.Checkbutton(shortcut_row,
+                       text="I want a desktop shortcut for Echo",
+                       variable=self._shortcut_var,
+                       command=_on_shortcut_toggle,
+                       bg=CARD, fg=FG, selectcolor=ENTRY_BG,
+                       activebackground=CARD, activeforeground=FG,
+                       font=("Segoe UI", 9)).pack(side="left", anchor="w")
+        shortcut_btn.config(state="disabled")
+
         self._make_save_btn(frame, self._save_engine)
+
+    def _create_shortcut(self):
+        import sys, pathlib
+        try:
+            import win32com.client
+            shell    = win32com.client.Dispatch("WScript.Shell")
+            desktop  = pathlib.Path(shell.SpecialFolders("Desktop"))
+            exe_path = pathlib.Path(sys.executable)
+            lnk_path = desktop / "Echo.lnk"
+            sc       = shell.CreateShortcut(str(lnk_path))
+            sc.TargetPath       = str(exe_path)
+            sc.WorkingDirectory = str(exe_path.parent)
+            sc.Description      = "Echo voice commands"
+            # Use icon.ico next to the exe if it exists, else fall back to the exe itself
+            ico = exe_path.parent / "icon.ico"
+            sc.IconLocation = f"{ico},0" if ico.exists() else f"{exe_path},0"
+            sc.save()
+            self._flash(f"✓  Shortcut created on Desktop: {lnk_path.name}")
+        except ImportError:
+            # win32com not available — fall back to pure PowerShell
+            try:
+                import subprocess, sys, pathlib
+                exe_path = pathlib.Path(sys.executable)
+                desktop  = pathlib.Path.home() / "Desktop"
+                lnk_path = desktop / "Echo.lnk"
+                ico      = exe_path.parent / "icon.ico"
+                icon_str = str(ico) if ico.exists() else str(exe_path)
+                ps = (
+                    f'$ws=New-Object -ComObject WScript.Shell;'
+                    f'$s=$ws.CreateShortcut("{lnk_path}");'
+                    f'$s.TargetPath="{exe_path}";'
+                    f'$s.WorkingDirectory="{exe_path.parent}";'
+                    f'$s.IconLocation="{icon_str},0";'
+                    f'$s.Description="Echo voice commands";'
+                    f'$s.Save()'
+                )
+                subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps],
+                    check=True, capture_output=True,
+                )
+                self._flash(f"✓  Shortcut created on Desktop.")
+            except Exception as e:
+                self._flash(f"Failed to create shortcut: {e}", RED)
+        except Exception as e:
+            self._flash(f"Failed to create shortcut: {e}", RED)
 
     def _on_conf_change(self, _e=None):
         try:
