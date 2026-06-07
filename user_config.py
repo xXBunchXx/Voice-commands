@@ -174,10 +174,17 @@ def load() -> dict:
 
 
 def save(data: dict) -> None:
-    """Write config back to disk."""
+    """Write config back to disk atomically.
+
+    Writes to a .tmp file first, then renames over the real config so a crash
+    or power loss mid-write can never corrupt the saved config and cause all
+    user apps (Steam games etc.) to be lost.
+    """
     APPDATA_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    tmp = CONFIG_FILE.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+    tmp.replace(CONFIG_FILE)   # atomic on the same filesystem
 
 
 def get_apps() -> dict[str, str]:
