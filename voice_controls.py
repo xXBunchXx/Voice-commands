@@ -840,12 +840,6 @@ def build_grammar() -> str:
     for w in words:
         if w not in seen:
             seen.add(w); out.append(w)
-
-    # Keep a set of valid phrases (excluding the sentinel) so the recognition
-    # loop can hard-filter results from large models that ignore SetGrammar().
-    global _grammar_phrases
-    _grammar_phrases = set(out) - {"[unk]"}
-
     return json.dumps(out)
 
 
