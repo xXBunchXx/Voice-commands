@@ -908,8 +908,11 @@ def handle_command(text: str) -> None:
                 print(f"▶  Play {app}!")
                 _status(f"Play {app.title()}")
                 open_or_focus(app)
-                time.sleep(0.8)
-                keyboard.send("play/pause media")
+                # Give the window time to come to the foreground before we send
+                time.sleep(1.2)
+                # Send directly to the app's window so the OS routes it correctly
+                if not _play_in_app(app):
+                    keyboard.send("play/pause media")
             else:
                 print("⏸  Toggling playback!")
                 _status("Play / Pause")
