@@ -1136,6 +1136,10 @@ def handle_command(text: str) -> bool:
         snap_app(app, "fullscreen")
     elif words[0] in _cw_all("merge"):
         merge_explorer_windows()
+    elif words[0] in _cw_all("close") and len(words) > 1 and words[1] == "current":
+        keyboard.send("ctrl+w")
+        print("✕  Closed current tab!")
+        _status("Close current tab")
     elif words[0] in _cw_all("close"):
         if len(words) > 1:
             app, _ = _parse_app(words, 1)
