@@ -6,6 +6,9 @@ dist/
 __pycache__/
 *.pyc
 
+# Generated files
+icon.ico
+
 # Stray files
 '+$n)
 output.log

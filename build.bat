@@ -106,9 +106,26 @@ goto :eof
 
 :: ── Build ─────────────────────────────────────────────────────────────────────
 :build
+set ICON_ARG=
+set ICON_DATA=
+if exist "icon.png" (
+    echo.
+    echo Converting icon.png to icon.ico ...
+    python -c "from PIL import Image;img=Image.open('icon.png');img.save('icon.ico',format='ICO',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+    if errorlevel 1 (
+        echo WARNING: Icon conversion failed, building without custom icon.
+    ) else (
+        set ICON_ARG=--icon icon.ico
+        set ICON_DATA=--add-data "icon.png;."
+    )
+) else (
+    echo.
+    echo NOTE: icon.png not found in project folder, skipping icon. Copy icon.png here to include it.
+)
+
 echo.
 echo Running PyInstaller...
-pyinstaller --onefile --noconsole --name Echo --add-data "version.txt;." --collect-all vosk --collect-all pystray --hidden-import PIL --exclude-module _bootlocale --exclude-module _distutils_hack main.py
+pyinstaller --onefile --noconsole --name Echo %ICON_ARG% --add-data "version.txt;." %ICON_DATA% --collect-all vosk --collect-all pystray --hidden-import PIL --exclude-module _bootlocale --exclude-module _distutils_hack main.py
 
 if errorlevel 1 (
     echo.
@@ -136,7 +153,7 @@ if exist "'+$n)" del /f /q "'+$n)"
 git rm --cached -r dist/ >nul 2>&1
 git rm --cached Echo.zip >nul 2>&1
 :: Stage all source files
-git add version.txt main.py user_config.py voice_controls.py manage_apps.py settings_window.py voice_templates.py .gitignore build.bat
+git add version.txt main.py user_config.py voice_controls.py manage_apps.py settings_window.py voice_templates.py .gitignore build.bat icon.png
 git commit --allow-empty -m "%BUILD_TYPE% v%NEW_VER%"
 git push
 if errorlevel 1 (
