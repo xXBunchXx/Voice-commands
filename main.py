@@ -110,7 +110,8 @@ def _version_tuple(v: str) -> tuple:
     return tuple(int(x) for x in v.split("."))
 
 
-def _do_update(root: tk.Tk, status_var: tk.StringVar) -> None:
+def _do_update(root: tk.Tk, status_var: tk.StringVar, latest_version: str) -> None:
+    exe_url  = f"{GITHUB_RELEASES}/v{latest_version}/Echo.exe"
     exe_path = pathlib.Path(sys.executable)
     new_exe  = exe_path.with_name("Echo_new.exe")
 
