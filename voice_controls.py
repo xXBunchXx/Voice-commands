@@ -1201,14 +1201,9 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     print(f"Confidence threshold: {CONFIDENCE_THRESHOLD:.0%}")
     print("Say 'diagnose' at any time to recheck running apps.\n")
 
-    voice_templates.reload()   # pre-load any saved training templates
-
-    _utterance_buf: list[bytes] = []   # raw audio chunks for current utterance
-
     try:
         while not stop_event.is_set():
             data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
-            _utterance_buf.append(data)
 
             # ── Feed reference model (keep it in sync) ────────────────────
             if rec_ref is not None:
@@ -1220,9 +1215,6 @@ def run(stop_event: _threading.Event | None = None) -> bool:
 
             # ── Main model ────────────────────────────────────────────────
             if rec.AcceptWaveform(data):
-                raw_audio = b"".join(_utterance_buf)
-                _utterance_buf = []
-
                 result = json.loads(rec.Result())
                 text   = result.get("text", "").strip().lower()
                 if not text or text == "[unk]":
@@ -1238,10 +1230,6 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                     text, noise_word = _dual_model_filter(text, ref)
                     if not text:
                         continue
-
-                # Voice-template override — if the command has a valid prefix
-                # but an unrecognised app name, check trained templates
-                text = _apply_template_override(text, raw_audio)
 
                 conf = average_confidence(result)
                 if conf >= CONFIDENCE_THRESHOLD:
