@@ -715,8 +715,6 @@ class AppManagerWidget(tk.Frame):
                        (self.e_edit_spoken, spoken)):
             e.delete(0, "end")
             e.insert(0, val)
-        # Update train hint
-        self._refresh_train_hint(name)
 
     def _on_select(self, _=None):
         name = self.combo_var.get()
