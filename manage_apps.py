@@ -555,6 +555,8 @@ class AppManagerWindow(tk.Toplevel):
             self._add_website, color=MUTED).pack(side="left", padx=(8, 0))
         btn(quick_row, "📁  Add Folder",
             self._add_folder, color=MUTED).pack(side="left", padx=(8, 0))
+        btn(quick_row, "🎮  Add Steam Game",
+            self._add_steam_game, color=MUTED).pack(side="left", padx=(8, 0))
         btn(quick_row, "🔍  Scan Installed Apps",
             self._open_scan, color=MUTED).pack(side="left", padx=(8, 0))
 
