@@ -291,6 +291,15 @@ def set_context_commands(cmds: dict[str, dict[str, str]]) -> None:
     data["CONTEXT_COMMANDS"] = cmds
     save(data)
 
+def get_custom_groups() -> dict[str, list[str]]:
+    """Returns {group_name: [proc_name, ...]}  e.g. {"music": ["spotify.exe","chrome.exe"]}"""
+    return load().get("CUSTOM_GROUPS", {})
+
+def set_custom_groups(groups: dict[str, list[str]]) -> None:
+    data = load()
+    data["CUSTOM_GROUPS"] = groups
+    save(data)
+
 
 def add_entry(name: str, path: str, proc: str) -> None:
     data = load()
