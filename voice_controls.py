@@ -945,8 +945,6 @@ def handle_command(text: str) -> bool:
     last_command = text
     last_command_time = now
 
-    print(f"Command: '{text}'")
-
     if text in _cw_all("skip"):
         print("⏭  Skipping track!")
         _status("Skipping track")
