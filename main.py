@@ -413,7 +413,7 @@ def main():
     root = tk.Tk()
     _root_ref = root
     _overlay  = StatusOverlay(root)
-    root.title(f"Voice Commands  v{VERSION}")
+    root.title(f"Echo  v{VERSION}")
     root.configure(bg=BG)
     root.geometry("960x740")
     root.minsize(800, 600)
