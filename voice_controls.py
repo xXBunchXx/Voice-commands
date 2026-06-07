@@ -796,7 +796,17 @@ def print_diagnostic() -> None:
 # ─────────────────────────────────────────────────────────────────────────
 
 
-def build_grammar() -> str:
+def build_grammar(active_proc: str = "") -> str:
+    """Build the Vosk recognition grammar for the given foreground process.
+
+    App-control commands (open/close/minimise/…) are always included for every
+    app — you need to be able to switch apps from anywhere.
+
+    Context commands are filtered: only phrases whose context group matches
+    *active_proc* (or is "any") are added.  This keeps the vocabulary small
+    when, say, a game is focused — no browser shortcuts cluttering the model.
+    The grammar is rebuilt dynamically whenever the foreground app changes.
+    """
     words = ["[unk]"]
 
     # Simple commands — include every alias
@@ -856,9 +866,13 @@ def build_grammar() -> str:
         words.append(f"volume up {step}")
         words.append(f"volume down {step}")
 
-    # Context-sensitive commands
-    for phrase in _CONTEXT_COMMANDS:
-        words.append(phrase)
+    # Context-sensitive commands — only include phrases whose context matches
+    # the currently focused app.  "any" phrases are always included.
+    for phrase, targets in _CONTEXT_COMMANDS.items():
+        for context in targets:
+            if context == "any" or _proc_matches_context(active_proc, context):
+                words.append(phrase)
+                break   # one matching context is enough to include the phrase
 
     # Deduplicate while preserving order
     seen = set(); out = []
