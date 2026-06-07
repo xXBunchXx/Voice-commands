@@ -46,7 +46,14 @@ CONFIDENCE_THRESHOLD = 0.65
 # Populated from config in run() — use _cw(key) to get current trigger word
 _COMMAND_WORDS:    dict[str, str]             = user_config.DEFAULT_COMMAND_WORDS.copy()
 _VOLUME_STEPS:     dict[str, int]             = user_config.DEFAULT_VOLUME_STEPS.copy()
-_CONTEXT_COMMANDS: dict[str, dict[str, str]]  = user_config.DEFAULT_CONTEXT_COMMANDS.copy()
+_CONTEXT_COMMANDS:   dict[str, dict[str, str]]  = user_config.DEFAULT_CONTEXT_COMMANDS.copy()
+_SPOKEN_NAMES:       dict[str, str]             = {}   # display_name → spoken_name
+_SPOKEN_TO_DISPLAY:  dict[str, str]             = {}   # spoken_name  → display_name
+
+
+def _spoken(app: str) -> str:
+    """Return the spoken alias for an app, falling back to its display name."""
+    return _SPOKEN_NAMES.get(app, app)
 
 def _cw_all(key: str) -> list[str]:
     """Return all trigger words for an action key (comma-separated aliases)."""
