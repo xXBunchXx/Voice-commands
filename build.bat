@@ -111,7 +111,7 @@ set ICON_DATA=
 if exist "icon.png" (
     echo.
     echo Converting icon.png to icon.ico ...
-    python -c "from PIL import Image;img=Image.open('icon.png');img.save('icon.ico',format='ICO',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+    python -c "from PIL import Image;img=Image.open('icon.png').convert('RGBA');bb=img.getbbox();img=img.crop(bb) if bb else img;img.save('icon.ico',format='ICO',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
     if errorlevel 1 (
         echo WARNING: Icon conversion failed, building without custom icon.
     ) else (
