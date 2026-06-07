@@ -37,6 +37,11 @@ _MAX_FRAMES = 120   # cap for DTW speed (~1.2 s of speech)
 DEFAULT_THRESHOLD  = 2.8
 # Adaptive threshold: accept if query distance ≤ mean-pairwise-spread × factor
 THRESHOLD_FACTOR   = 1.2
+# Minimum RMS amplitude (0.0–1.0 normalised) for template matching to run.
+# Real speech is typically 0.05–0.3; PC fan / background noise is < 0.02.
+# Raise this if you get false matches from ambient noise; lower it if your
+# mic is quiet and real commands get rejected.
+_MIN_SPEECH_RMS    = 0.03
 
 # ── In-memory cache ────────────────────────────────────────────────────────────
 _templates: dict[str, list[np.ndarray]] = {}   # spoken_name → [mfcc, ...]
