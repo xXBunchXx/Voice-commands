@@ -1,4 +1,4 @@
-﻿"""
+"""
 Manages per-user config stored in %APPDATA%/Echo/config.json.
 
 Version scheme  A.B.C.D  (all integers, read left to right):
