@@ -1088,26 +1088,30 @@ _SMALL_MODEL_NAME = "vosk-model-small-en-us-0.15"
 
 
 def _dual_model_filter(main_text: str, ref_text: str) -> str:
-    """Compare the first word of *main_text* against *ref_text* (the small
-    model's output).  If they disagree, the main model has likely prepended a
-    hallucinated word — strip it and return the remainder.
+    """Use the small model's output to detect a hallucinated leading word in
+    the main model's result.
+
+    Logic: if the small model's first word matches the main model's *second*
+    word, the main model has prepended a ghost word — strip it.
 
     Examples
     --------
-    main="open skip",   ref="skip"         → "skip"
-    main="open firefox",ref="open firefox" → "open firefox"  (agree, untouched)
-    main="skip",        ref=""             → "skip"          (no ref, untouched)
+    main="open skip",        ref="skip"         → small[0]=="skip"==main[1] → strip → "skip"
+    main="open firefox",     ref="open firefox" → small[0]=="open"!=main[1]=="firefox" → untouched
+    main="open open firefox",ref="open firefox" → small[0]=="open"==main[1] → strip → "open firefox"
+    main="close firefox",    ref="close firefox"→ small[0]=="close"!=main[1]=="firefox" → untouched
     """
     if not ref_text or not main_text:
         return main_text
     main_words = main_text.split()
     ref_words  = ref_text.split()
     if len(main_words) <= 1:
-        return main_text          # nothing to strip
-    if main_words[0] != ref_words[0]:
+        return main_text          # only one word, nothing to strip
+    # Strip iff small model's first word == main model's second word
+    if ref_words[0] == main_words[1]:
         stripped = " ".join(main_words[1:])
-        print(f"  ✂  Dual-model: main='{main_words[0]}' ref='{ref_words[0]}' "
-              f"→ stripped leading word → '{stripped}'")
+        print(f"  ✂  Dual-model: small[0]='{ref_words[0]}' == main[1]='{main_words[1]}' "
+              f"→ stripped '{main_words[0]}' → '{stripped}'")
         return stripped
     return main_text
 
