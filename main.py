@@ -79,7 +79,7 @@ def _ssl_ctx():
 
 
 def _urlopen(url: str, timeout: int = 10):
-    req = urllib.request.Request(url, headers={"User-Agent": "VoiceCommands/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Echo/1.0"})
     return urllib.request.urlopen(req, context=_ssl_ctx(), timeout=timeout)
 
 
