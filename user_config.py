@@ -300,6 +300,26 @@ def set_custom_groups(groups: dict[str, list[str]]) -> None:
     data["CUSTOM_GROUPS"] = groups
     save(data)
 
+def get_spoken_names() -> dict[str, str]:
+    """Returns {display_name: spoken_name}  e.g. {"aseprite": "ace sprite"}"""
+    return load().get("SPOKEN_NAMES", {})
+
+def set_spoken_names(names: dict[str, str]) -> None:
+    data = load()
+    data["SPOKEN_NAMES"] = {k: v for k, v in names.items() if v and v.strip()}
+    save(data)
+
+def set_spoken_name(display_name: str, spoken: str) -> None:
+    """Set or clear a single spoken name entry."""
+    names = get_spoken_names()
+    if spoken and spoken.strip():
+        names[display_name] = spoken.strip().lower()
+    else:
+        names.pop(display_name, None)
+    data = load()
+    data["SPOKEN_NAMES"] = names
+    save(data)
+
 
 def add_entry(name: str, path: str, proc: str) -> None:
     data = load()
