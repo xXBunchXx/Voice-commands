@@ -901,13 +901,11 @@ def _ghost_check(text: str, now: float) -> tuple[bool, bool]:
                    the engine loop to call rec.Reset() so Vosk's accumulated
                    audio state is flushed before the next real command.
     """
-    # Already muted?
+    # Already muted — silent suppression (no log spam)
     until = _ghost_muted.get(text)
     if until is not None:
         if now < until:
-            remaining = int(until - now)
-            print(f"🚫  Ghost suppressed: '{text}'  ({remaining}s remaining)")
-            return True, False      # suppress, but decoder already reset
+            return True, False      # suppress quietly; decoder already reset
         else:
             del _ghost_muted[text]  # mute expired — let it through
 
@@ -919,8 +917,8 @@ def _ghost_check(text: str, now: float) -> tuple[bool, bool]:
     if len(fires) >= GHOST_MAX_FIRES:
         _ghost_muted[text] = now + GHOST_MUTE_SECS
         _ghost_streak[text] = []
-        print(f"🚫  '{text}' fired {len(fires)}× in {GHOST_WINDOW:.0f}s "
-              f"— suppressing for {GHOST_MUTE_SECS:.0f}s  (resetting decoder)")
+        # Only print once — when the mute first trips
+        print(f"🚫  Ghost muted: '{text}'  (muting for {GHOST_MUTE_SECS:.0f}s)")
         return True, True           # suppress AND reset Vosk's decoder
 
     return False, False
