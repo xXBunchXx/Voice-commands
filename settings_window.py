@@ -19,8 +19,8 @@ AMBER    = "#fbbf24"
 
 _KNOWN_CONTEXTS = ("browser", "explorer", "editor", "any")
 _CTX_ICONS      = {"browser": "🌐", "explorer": "📁", "editor": "✏️", "any": "🌍"}
-_CTX_COLOURS    = {"browser": "#2d6ab3", "explorer": "#4ade80",
-                   "editor": "#fbbf24",  "any":     "#2d6ab3"}
+_CTX_COLOURS    = {"browser": "#0F367D", "explorer": "#4ade80",
+                   "editor": "#fbbf24",  "any":     "#0F367D"}
 
 _MOD_MAP = {
     "control_l": "ctrl",  "control_r": "ctrl",
@@ -492,7 +492,7 @@ class SettingsWidget(tk.Frame):
             is_custom_group = ctx_name in groups
             is_known        = ctx_name in _KNOWN_CONTEXTS
             icon  = _CTX_ICONS.get(ctx_name, "👤" if is_custom_group else "🔧")
-            color = _CTX_COLOURS.get(ctx_name, "#2d6ab3" if is_custom_group else AMBER)
+            color = _CTX_COLOURS.get(ctx_name, "#0F367D" if is_custom_group else AMBER)
 
             if is_known:
                 label = ctx_name
