@@ -21,7 +21,7 @@ import os
 import pathlib
 import sys
 
-APPDATA_DIR = pathlib.Path(os.getenv("APPDATA", "~")) / "VoiceCommands"
+APPDATA_DIR = pathlib.Path(os.getenv("APPDATA", "~")) / "Echo"
 CONFIG_FILE = APPDATA_DIR / "config.json"
 
 # ── Version ───────────────────────────────────────────────────────────────────
