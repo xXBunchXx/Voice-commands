@@ -256,6 +256,16 @@ def set_cooldown(value: float) -> None:
     data["COOLDOWN"] = round(max(0.0, value), 1)
     save(data)
 
+def get_dual_model_check() -> bool:
+    """Whether to load the small model alongside the main model to filter
+    hallucinated leading words (noise at the start of a command)."""
+    return bool(load().get("DUAL_MODEL_CHECK", True))
+
+def set_dual_model_check(enabled: bool) -> None:
+    data = load()
+    data["DUAL_MODEL_CHECK"] = bool(enabled)
+    save(data)
+
 def get_overlay_enabled() -> bool:
     return bool(load().get("OVERLAY_ENABLED", True))
 
