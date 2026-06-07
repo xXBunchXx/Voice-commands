@@ -1054,7 +1054,7 @@ class SettingsWidget(tk.Frame):
         card.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.72)
 
         title = "✏  Edit Group" if old_name else "➕  New Group"
-        tk.Label(card, text=title, bg=CARD, fg=ACC,
+        tk.Label(card, text=title, bg=CARD, fg=ACCENT_TEXT,
                  font=("Segoe UI Semibold", 12)).pack(pady=(0, 14))
 
         # Group name
