@@ -138,14 +138,37 @@ DEFAULT_PROC_NAMES: dict[str, str] = {
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def load() -> dict:
-    """Load config from disk, creating defaults on first run."""
+    """Load config from disk, creating defaults on first run.
+
+    If the stored VERSION is below RESET_BASELINE the config is backed up and
+    wiped — this is the one-time migration for the 1.0.0.0 baseline reset.
+    After that, future version increments only add missing keys; nothing is
+    ever wiped unless RESET_BASELINE is deliberately bumped again.
+    """
     APPDATA_DIR.mkdir(parents=True, exist_ok=True)
     if not CONFIG_FILE.exists():
         _write_defaults()
     try:
         with open(CONFIG_FILE, encoding="utf-8") as f:
             data = json.load(f)
-        # Ensure all expected top-level keys exist (forward-compat for older configs)
+
+        # ── One-time baseline reset ───────────────────────────────────────
+        stored_ver = _parse_version(data.get("VERSION", "0.0.0.0"))
+        if stored_ver < RESET_BASELINE:
+            try:
+                import shutil
+                backup = CONFIG_FILE.with_name(
+                    f"config.pre-{'_'.join(str(x) for x in RESET_BASELINE)}.json")
+                if CONFIG_FILE.exists():
+                    shutil.copy2(CONFIG_FILE, backup)
+                print(f"  ↻  Config reset to v{APP_VERSION} defaults "
+                      f"(old config backed up to {backup.name})")
+            except Exception:
+                pass
+            _write_defaults()
+            return load()
+
+        # ── Forward-compat: add any keys added in newer versions ──────────
         changed = False
         for key, default in _schema_defaults().items():
             if key not in data:
