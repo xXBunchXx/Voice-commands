@@ -434,7 +434,10 @@ def _windows_for_app(app_name: str) -> list[int]:
     def _cb(hwnd, _):
         if not allow_hidden and not win32gui.IsWindowVisible(hwnd):
             return
-        if not win32gui.GetWindowText(hwnd):
+        # Tray apps (discord, steam) can have their main window hidden with
+        # no title string — still include them so we can restore/focus them.
+        # For normal apps require a non-empty title to skip background threads.
+        if not allow_hidden and not win32gui.GetWindowText(hwnd):
             return
         if win32gui.GetClassName(hwnd) in excluded:
             return
