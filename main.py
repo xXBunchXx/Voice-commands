@@ -1,5 +1,5 @@
 """
-VoiceCommands — main launcher.
+Echo — main launcher.
 """
 import os
 import sys
