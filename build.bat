@@ -183,7 +183,7 @@ if errorlevel 1 (
     echo  The zip is ready at: %~dp0Echo.zip
     start https://cli.github.com
 ) else (
-    gh release create "v%NEW_VER%" Echo.zip --repo xXBunchXx/Voice-commands --title "Echo v%NEW_VER%" --notes "Echo v%NEW_VER%"
+    gh release create "v%NEW_VER%" Echo.zip dist\Echo.exe --repo xXBunchXx/Voice-commands --title "Echo v%NEW_VER%" --notes "Echo v%NEW_VER%"
     if errorlevel 1 (
         echo.
         echo  Release upload failed. If v%NEW_VER% already exists on GitHub,
