@@ -684,9 +684,11 @@ class AppManagerWidget(tk.Frame):
             self.e_rename.delete(0, "end")
 
     def _show_preview(self, name: str):
-        path = self._apps.get(name, "—")
-        proc = self._procs.get(name, "—")
-        self.preview.config(text=f"  Path : {path}\n  Proc : {proc}")
+        path   = self._apps.get(name, "—")
+        proc   = self._procs.get(name, "—")
+        spoken = user_config.get_spoken_names().get(name, "")
+        spoken_line = f"\n  Say  : \"{spoken}\"" if spoken else ""
+        self.preview.config(text=f"  Path : {path}\n  Proc : {proc}{spoken_line}")
 
     def _on_select(self, _=None):
         name = self.combo_var.get()
