@@ -30,7 +30,7 @@ def _read_version() -> str:
 VERSION = _read_version()
 
 GITHUB_RAW     = "https://raw.githubusercontent.com/xXBunchXx/Voice-commands/main/"
-GITHUB_EXE_URL = "https://github.com/xXBunchXx/Voice-commands/raw/main/dist/VoiceCommands.exe"
+GITHUB_EXE_URL = "https://github.com/xXBunchXx/Voice-commands/raw/main/dist/Echo.exe"
 
 # ── Log queue — voice engine writes here, UI reads it ─────────────────────────
 
