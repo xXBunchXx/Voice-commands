@@ -466,8 +466,8 @@ def main():
     engine_btns = tk.Frame(engine_tab, bg=BG, pady=4)
     engine_btns.pack(fill="x", padx=16)
 
-    b_start = mkbtn(engine_btns, "▶  Start Voice Commands", lambda: None)
-    b_stop  = mkbtn(engine_btns, "■  Stop Voice Commands",
+    b_start = mkbtn(engine_btns, "▶  Start Echo", lambda: None)
+    b_stop  = mkbtn(engine_btns, "■  Stop Echo",
                     lambda: _stop_engine(status_var, b_start, b_stop),
                     color=MUTED, state="disabled")
     b_start.config(command=lambda: _start_engine(root, status_var, b_start, b_stop))
