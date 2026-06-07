@@ -36,29 +36,28 @@ VOSK_MODELS = [
     {
         "name":  "vosk-model-small-en-us-0.15",
         "size":  "40 MB",
-        "desc":  "Small & fast — low RAM, good grammar accuracy.  (Default)",
+        "desc":  "Small & fast — very low RAM usage, good for slower machines.",
         "url":   "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
         "recommended": True,
     },
     {
         "name":  "vosk-model-en-us-0.22-lgraph",
         "size":  "128 MB",
-        "desc":  "Medium lattice-graph model — noticeably more accurate, still grammar-friendly.  ★ Best upgrade",
+        "desc":  "Medium lattice-graph model — noticeably more accurate with no downsides for command use.  ★ Recommended",
         "url":   "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip",
         "recommended": True,
     },
     {
         "name":  "vosk-model-en-us-daanzu-20200905",
         "size":  "800 MB",
-        "desc":  "Large model tuned for short spoken commands — high accuracy, grammar-friendly.",
+        "desc":  "Large model tuned for short spoken commands — high accuracy, works well with the grammar list.",
         "url":   "https://alphacephei.com/vosk/models/vosk-model-en-us-daanzu-20200905.zip",
         "recommended": True,
     },
     {
         "name":  "vosk-model-en-us-0.22",
         "size":  "1.8 GB",
-        "desc":  "Full large language model — highest raw accuracy but treats grammar as a soft hint "
-                 "(random words may slip through).  Use the lgraph or daanzu model instead for commands.",
+        "desc":  "Full large language model — may recognise words outside your command list due to its built-in language model.  Not recommended for command use.",
         "recommended": False,
     },
 ]
