@@ -247,8 +247,20 @@ class AppManagerWidget(tk.Frame):
         self.e_name.grid(row=1, column=0, sticky="ew", pady=(2, 0))
         self.e_path.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=(2, 0))
         self.e_proc.grid(row=1, column=2, sticky="ew", padx=(10, 0), pady=(2, 0))
+
+        self._lbl(add_card, "Spoken name  (optional — how you say the app name)",
+                  fg=MUTED, font=("Segoe UI", 8)).grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self._lbl(add_card,
+                  'e.g. type "ace sprite" for display name "aseprite"',
+                  fg=MUTED, font=("Segoe UI", 8)).grid(
+            row=2, column=2, sticky="w", padx=(10, 0), pady=(8, 0))
+
+        self.e_spoken = self._inp(add_card, 30)
+        self.e_spoken.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 0))
+
         self._btn(add_card, "Add Entry", self._on_add).grid(
-            row=2, column=0, columnspan=3, pady=(10, 0), sticky="e")
+            row=4, column=0, columnspan=3, pady=(10, 0), sticky="e")
 
         # Delete / Rename
         del_sec = self._section(page, "🗑  Delete / Rename Entry")
