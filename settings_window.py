@@ -1270,7 +1270,7 @@ class SettingsWidget(tk.Frame):
         self._refresh_model_statuses()
         self._flash(f"✓  Switched to {name} — restart engine to apply.")
 
-    def _download_model(self, m: dict, progress_lbl, status_lbl):
+    def _download_model(self, m: dict, progress_lbl, status_lbl, on_done=None):
         """Download and extract a Vosk model in a background thread."""
         import zipfile, urllib.request, ssl, io
 
