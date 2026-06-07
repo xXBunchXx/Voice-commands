@@ -830,13 +830,18 @@ def average_confidence(result: dict) -> float:
 
 def _parse_app(words: list[str], start: int) -> tuple[str | None, list[str]]:
     """Try to match the longest app name beginning at words[start].
-    Tries 3-word, 2-word, then 1-word candidates so 'no mans sky' is
-    matched before 'no' alone would be.
-    Returns (app_name, remaining_words) or (None, words[start:])."""
+    Checks display names and spoken aliases (longest match wins).
+    Returns (display_name, remaining_words) or (None, words[start:])."""
     for length in range(min(3, len(words) - start), 0, -1):
         candidate = " ".join(words[start : start + length])
+        # Direct display-name match
         if candidate in APPS:
-            return candidate, words[start + length :]
+            return candidate, words[start + length:]
+        # Spoken alias → resolve to display name
+        if candidate in _SPOKEN_TO_DISPLAY:
+            display = _SPOKEN_TO_DISPLAY[candidate]
+            if display in APPS:
+                return display, words[start + length:]
     return None, words[start:]
 
 
