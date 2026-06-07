@@ -265,6 +265,11 @@ _tray_icon: pystray.Icon | None = None
 
 
 def _make_tray_image() -> Image.Image:
+    icon = _load_icon()
+    if icon is not None:
+        icon = icon.resize((64, 64), Image.LANCZOS)
+        return icon
+    # Fallback: simple drawn icon
     size = 64
     img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d    = ImageDraw.Draw(img)
