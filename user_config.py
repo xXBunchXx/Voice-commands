@@ -116,23 +116,23 @@ DEFAULT_VOLUME_STEPS: dict[str, int] = {
 
 # ── Defaults (used only on very first run if no config exists) ───────────────
 DEFAULT_APPS: dict[str, str] = {
-    "firefox":  r"C:\Program Files\Mozilla Firefox\firefox.exe",
-    "steam":    r"C:\Program Files (x86)\Steam\steam.exe",
-    "files":    r"C:\Windows\explorer.exe",
-    "spotify":  r"C:\Users\Default\AppData\Roaming\Spotify\Spotify.exe",
-    "discord":  r"C:\Users\Default\AppData\Local\Discord\Discord.exe",
-    "command":  r"C:\Windows\System32\cmd.exe",
-    "settings": r"ms-settings:",
+    "files":      r"C:\Windows\explorer.exe",
+    "settings":   r"ms-settings:",
+    "notepad":    r"C:\Windows\notepad.exe",
+    "command":    r"C:\Windows\System32\cmd.exe",
+    "calculator": r"calc.exe",
+    "paint":      r"C:\Windows\System32\mspaint.exe",
+    "task manager": r"C:\Windows\System32\Taskmgr.exe",
 }
 
 DEFAULT_PROC_NAMES: dict[str, str] = {
-    "firefox":  "firefox.exe",
-    "steam":    "steam.exe",
-    "files":    "explorer.exe",
-    "spotify":  "spotify.exe",
-    "discord":  "discord.exe",
-    "command":  "cmd.exe",
-    "settings": "SystemSettings.exe",
+    "files":      "explorer.exe",
+    "settings":   "SystemSettings.exe",
+    "notepad":    "notepad.exe",
+    "command":    "cmd.exe",
+    "calculator": "Calculator.exe",
+    "paint":      "mspaint.exe",
+    "task manager": "Taskmgr.exe",
 }
 
 # ── Public API ────────────────────────────────────────────────────────────────
