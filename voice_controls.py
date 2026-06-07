@@ -1126,7 +1126,6 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     _spoken_raw          = user_config.get_spoken_names()
     _SPOKEN_NAMES        = _spoken_raw
     _SPOKEN_TO_DISPLAY   = {v: k for k, v in _spoken_raw.items() if v}
-    _APP_SLOTS           = user_config.get_app_slots()
 
     if stop_event is None:
         stop_event = _threading.Event()
