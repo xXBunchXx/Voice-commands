@@ -449,9 +449,10 @@ def main():
                 # fallback: walk up from the inner tk frame handle
                 hwnd = ctypes.windll.user32.GetAncestor(root.winfo_id(), 2)
             # Colour format: 0x00BBGGRR
-            # BG #0a1020 → R=0x0a G=0x10 B=0x20 → 0x0020100a
-            caption_col = ctypes.c_uint(0x0020100a)
-            border_col  = ctypes.c_uint(0x0020100a)
+            # Title bar #1a2840 → R=0x1a G=0x28 B=0x40 → 0x0040281a
+            caption_col = ctypes.c_uint(0x0040281a)
+            # Border matches title bar
+            border_col  = ctypes.c_uint(0x0040281a)
             ctypes.windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, 35, ctypes.byref(caption_col), ctypes.sizeof(caption_col))
             ctypes.windll.dwmapi.DwmSetWindowAttribute(
