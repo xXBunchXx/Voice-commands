@@ -22,7 +22,7 @@ import pathlib
 import numpy as np
 
 # ── Storage ───────────────────────────────────────────────────────────────────
-_TEMPLATES_DIR = pathlib.Path(os.getenv("APPDATA", "~")) / "VoiceCommands" / "templates"
+_TEMPLATES_DIR = pathlib.Path(os.getenv("APPDATA", "~")) / "Echo" / "templates"
 
 # ── Audio / feature parameters ────────────────────────────────────────────────
 _SR        = 16000
