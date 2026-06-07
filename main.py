@@ -377,7 +377,7 @@ class StatusOverlay:
         inner = tk.Frame(outer, bg="#0a1020", padx=20, pady=10)
         inner.pack()
         self._label = tk.Label(
-            inner, text="", bg="#0a1020", fg="#cdd6f4",
+            inner, text="", bg="#0a1020", fg="#ffffff",
             font=("Segoe UI Semibold", 12),
         )
         self._label.pack()
@@ -585,7 +585,7 @@ def main():
     log_box.tag_config("hear",  foreground="#89b4fa")
     log_box.tag_config("cmd",   foreground="#a6e3a1")
     log_box.tag_config("low",   foreground="#f9e2af")
-    log_box.tag_config("info",  foreground="#cdd6f4")
+    log_box.tag_config("info",  foreground="#ffffff")
     log_box.tag_config("error", foreground="#f38ba8")
     log_box.tag_config("muted", foreground="#585b70")
 
