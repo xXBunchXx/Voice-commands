@@ -1,5 +1,5 @@
 """
-Manages per-user config stored in %APPDATA%/VoiceCommands/config.json.
+Manages per-user config stored in %APPDATA%/Echo/config.json.
 
 Version scheme  A.B.C.D  (all integers, read left to right):
   A — every new build; likely to be buggy.  Reset to 0 when B increments.
