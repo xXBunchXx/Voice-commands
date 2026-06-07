@@ -402,9 +402,9 @@ def _auto_detect_model() -> str:
 
 
 def _schema_defaults() -> dict:
-    vc_exe = str(_exe_dir() / "VoiceCommands.exe")
-    apps  = {**DEFAULT_APPS,       "voice commands": vc_exe}
-    procs = {**DEFAULT_PROC_NAMES, "voice commands": "VoiceCommands.exe"}
+    vc_exe = str(_exe_dir() / "Echo.exe")
+    apps  = {**DEFAULT_APPS,       "echo": vc_exe}
+    procs = {**DEFAULT_PROC_NAMES, "echo": "Echo.exe"}
     return {
         "APPS":                 apps,
         "PROC_NAMES":           procs,
