@@ -703,9 +703,13 @@ def close_app(app_name: str) -> None:
         if not hwnds:
             print(f"  Couldn't find a window for '{app_name}'")
             return
-        # Minimise so the user can see something happened
+        # Minimise so the user can see something happened.
+        # SW_FORCEMINIMIZE (11) works even on Electron apps, dialogs, and
+        # windows that ignore a normal SW_MINIMIZE (6).
+        SW_FORCEMINIMIZE = 11
         for hwnd in hwnds:
-            win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+            if win32gui.IsWindowVisible(hwnd):
+                win32gui.ShowWindow(hwnd, SW_FORCEMINIMIZE)
 
     _pending_cancel.clear()
     _pending_close = {"app": app_name, "hwnds": hwnds}
