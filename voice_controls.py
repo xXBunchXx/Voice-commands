@@ -754,6 +754,21 @@ def merge_explorer_windows() -> None:
     print(f"🗂  Merged into {len(wins)} tabs!")
 
 
+# ── AUDIO OUTPUT SWITCHING ─────────────────────────────────────────────────
+def switch_audio(name: str) -> None:
+    """Switch the default playback device to the one mapped to *name*."""
+    dev = _AUDIO_DEVICES.get(name)
+    if not dev or not dev.get("id"):
+        print(f"  No audio device set up for '{name}'")
+        return
+    if audio_devices.set_default_output(dev["id"]):
+        label = dev.get("name", name)
+        print(f"🔊  Switched audio to {name}  ({label})")
+        _status(f"Audio → {name.title()}")
+    else:
+        print(f"  Couldn't switch audio to '{name}'")
+
+
 # ── LAYOUTS ────────────────────────────────────────────────────────────────
 # A layout is a snapshot of which known apps are open, each window's position
 # and size, and whether it's minimised/maximised/normal.  Saved per number 1-9.
