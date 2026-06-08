@@ -615,7 +615,10 @@ def _launch(app_name: str) -> None:
         LAUNCH_OVERRIDE[app_name]()
     elif app_name in APPS:
         path = APPS[app_name]
-        if _is_url(path):
+        if path.lower().startswith("shell:"):
+            # Start-menu / AppsFolder item (UWP, launcher-registered apps, etc.)
+            subprocess.Popen(["explorer.exe", path])
+        elif _is_url(path):
             import webbrowser
             webbrowser.open(path)
         elif _is_folder(path):
