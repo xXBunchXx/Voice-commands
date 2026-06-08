@@ -1298,6 +1298,14 @@ def handle_command(text: str) -> bool:
             restore_layout(num)
             return False
 
+    # ── Audio: "change to headphones" ──────────────────────────────────────
+    for _aw in _cw_all("switch_audio"):
+        if text.startswith(_aw + " "):
+            target = text[len(_aw) + 1:].strip()
+            if target in _AUDIO_DEVICES:
+                switch_audio(target)
+                return False
+
     if text in _cw_all("skip"):
         print("⏭  Skipping track!")
         _status("Skipping track")
