@@ -46,8 +46,9 @@ def _load_icon() -> Image.Image | None:
 
 VERSION = _read_version()
 
-GITHUB_RAW      = "https://raw.githubusercontent.com/xXBunchXx/Voice-commands/main/"
-GITHUB_RELEASES = "https://github.com/xXBunchXx/Voice-commands/releases/download"
+GITHUB_RAW         = "https://raw.githubusercontent.com/xXBunchXx/Voice-commands/main/"
+GITHUB_RELEASES    = "https://github.com/xXBunchXx/Voice-commands/releases/download"
+GITHUB_API_RELEASES = "https://api.github.com/repos/xXBunchXx/Voice-commands/releases"
 
 # ── Log queue — voice engine writes here, UI reads it ─────────────────────────
 
