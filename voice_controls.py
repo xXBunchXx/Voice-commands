@@ -1279,6 +1279,7 @@ def run(stop_event: _threading.Event | None = None) -> bool:
 
             # ── Main model ────────────────────────────────────────────────
             if rec.AcceptWaveform(data):
+                _partial_text = ""    # utterance finalised — reset partial tracking
                 result = json.loads(rec.Result())
                 text   = result.get("text", "").strip().lower()
                 if not text or text == "[unk]":
@@ -1309,6 +1310,25 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                             _ref_last_text = ""
                 else:
                     print(f"💤  Low confidence ({conf:.0%}): ignored")
+
+            else:
+                # ── Low-latency path ──────────────────────────────────────
+                # Act on a partial as soon as it stabilises into a complete
+                # command, instead of waiting for end-of-speech silence (~0.5s).
+                partial = json.loads(rec.PartialResult()).get("partial", "").strip().lower()
+                tnow = time.time()
+                if partial != _partial_text:
+                    _partial_text  = partial
+                    _partial_since = tnow
+                elif (partial and partial in _early_set
+                        and (tnow - _partial_since) >= PARTIAL_STABLE_SECS):
+                    print(f"🎤  '{partial}'")
+                    handle_command(partial)
+                    rec.Reset()
+                    if rec_ref is not None:
+                        rec_ref.Reset()
+                        _ref_last_text = ""
+                    _partial_text = ""
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
