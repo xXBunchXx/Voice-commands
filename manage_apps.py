@@ -859,6 +859,8 @@ class AppManagerWidget(tk.Frame):
         tag = "  ✓ added" if already else r["proc"]
         tk.Label(row, text=tag, bg=CARD, fg=MUTED,
                  font=("Consolas", 8)).pack(side="right", padx=(6, 2))
+        if getattr(self, "_wheel_handler", None):
+            self._bind_wheel(row)
 
     def _pick_candidate(self, r):
         for entry, val in ((self.e_name, r["name"]),
