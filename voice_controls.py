@@ -868,11 +868,13 @@ def build_grammar(active_proc: str = "") -> str:
     for mw in _cw_all("minimise"):
         words.append(mw)
         words.append(f"{mw} all")
+        words.append(f"{mw} current")
         for app in APPS:
             words.append(f"{mw} {_spoken(app)}")
 
     for xw in _cw_all("maximise"):
         words.append(xw)
+        words.append(f"{xw} current")
         for app in APPS:
             words.append(f"{xw} {_spoken(app)}")
 
@@ -885,6 +887,7 @@ def build_grammar(active_proc: str = "") -> str:
     for mvw in _cw_all("move"):
         for pos in SNAP_POSITIONS:
             words.append(f"{mvw} {pos}")
+            words.append(f"{mvw} current {pos}")
         for app in APPS:
             for pos in SNAP_POSITIONS:
                 words.append(f"{mvw} {_spoken(app)} {pos}")
