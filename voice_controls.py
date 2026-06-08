@@ -1199,9 +1199,13 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     # ── Context grammar watcher ───────────────────────────────────────────
     # Rebuilds the Vosk grammar whenever the foreground app changes so that
     # only context commands relevant to the active app are in the vocabulary.
-    # Compares the full grammar string — if it hasn't changed (e.g. switching
-    # between two browser windows) the recognizer is left alone.
-    _current_grammar = [grammar]   # mutable cell shared with the thread
+    #
+    # The watcher thread MUST NOT touch the recogniser directly: Vosk objects
+    # are not thread-safe, and SetGrammar mid-stream crashes.  Instead it just
+    # publishes the new grammar string; the audio loop rebuilds the recogniser
+    # on its own thread (via the constructor, which is crash-safe).
+    _current_grammar = [grammar]    # last grammar we've seen
+    _pending_grammar = [None]       # (grammar, proc) handed to the audio loop
 
     def _grammar_watcher():
         while not stop_event.is_set():
@@ -1209,18 +1213,28 @@ def run(stop_event: _threading.Event | None = None) -> bool:
             new_grammar = build_grammar(proc)
             if new_grammar != _current_grammar[0]:
                 _current_grammar[0] = new_grammar
-                rec.SetGrammar(new_grammar)
-                rec.Reset()
-                if rec_ref is not None:
-                    rec_ref.SetGrammar(new_grammar)
-                    rec_ref.Reset()
-                print(f"  ↻  Grammar updated for '{proc or 'unknown'}'")
+                _pending_grammar[0] = (new_grammar, proc)
             stop_event.wait(0.8)   # check ~every 800 ms
 
     _threading.Thread(target=_grammar_watcher, daemon=True).start()
 
     try:
         while not stop_event.is_set():
+            # Apply a pending grammar change on THIS thread (Vosk is single-thread).
+            pend = _pending_grammar[0]
+            if pend is not None:
+                _pending_grammar[0] = None
+                new_grammar, proc = pend
+                try:
+                    rec = KaldiRecognizer(model, SAMPLE_RATE, new_grammar)
+                    rec.SetWords(True)
+                    if rec_ref is not None and model_ref is not None:
+                        rec_ref = KaldiRecognizer(model_ref, SAMPLE_RATE, new_grammar)
+                        _ref_last_text = ""
+                    print(f"  ↻  Grammar updated for '{proc or 'unknown'}'")
+                except Exception as _ge:
+                    print(f"  Grammar update failed: {_ge}")
+
             data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
 
             # ── Feed reference model (keep it in sync) ────────────────────
