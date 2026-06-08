@@ -1280,16 +1280,19 @@ def _dual_model_filter(main_text: str, ref_text: str) -> tuple[str, str | None]:
     the main model's result.
 
     Logic: if the small model's first word matches the main model's *second*
-    word, the main model has prepended a ghost word — strip it.
+    word, the main model may have prepended a ghost word.  But we ONLY strip it
+    when that second word is itself a complete/standalone command — otherwise
+    "open firefox" (where the ref model simply missed "open") would be wrongly
+    cut down to "firefox".
 
     Returns (filtered_text, stripped_word_or_None).
 
     Examples
     --------
-    main="open skip",        ref="skip"         → ("skip",        "open")
-    main="open firefox",     ref="open firefox" → ("open firefox", None)
-    main="open open firefox",ref="open firefox" → ("open firefox", "open")
-    main="close firefox",    ref="close firefox"→ ("close firefox",None)
+    main="open skip",         ref="skip"          → ("skip",         "open")   # skip is a command → strip
+    main="open firefox",      ref="firefox"       → ("open firefox", None)     # firefox is an app → keep
+    main="open open firefox", ref="open firefox"  → ("open firefox", "open")   # doubled verb → strip
+    main="close firefox",     ref="close firefox" → ("close firefox",None)
     """
     if not ref_text or not main_text:
         return main_text, None
@@ -1297,8 +1300,9 @@ def _dual_model_filter(main_text: str, ref_text: str) -> tuple[str, str | None]:
     ref_words  = ref_text.split()
     if len(main_words) <= 1:
         return main_text, None    # only one word, nothing to strip
-    # Strip iff small model's first word == main model's second word
-    if ref_words[0] == main_words[1]:
+    # Strip only when the ref confirms the 2nd word AND that word is itself a
+    # standalone command (so the first word really is a redundant ghost verb).
+    if ref_words[0] == main_words[1] and main_words[1] in _command_trigger_words():
         stripped = " ".join(main_words[1:])
         return stripped, main_words[0]
     return main_text, None
