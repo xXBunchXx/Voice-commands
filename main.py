@@ -177,6 +177,24 @@ def _engine_loop(stop_event, root, status_var, b_start, b_stop):
         importlib.reload(voice_controls)
         if _overlay:
             voice_controls._status_cb = lambda msg: root.after(0, _overlay.show, msg)
+
+        # Let the engine control Echo's own window through Tk (keeps the GUI
+        # painting correctly when you say "minimise echo" / "open echo").
+        def _self_window(action):
+            def _do():
+                try:
+                    if action == "minimise":
+                        root.iconify()
+                    else:  # restore / focus
+                        root.deiconify()
+                        root.lift()
+                        root.attributes("-topmost", True)
+                        root.after(300, lambda: root.attributes("-topmost", False))
+                except Exception:
+                    pass
+            root.after(0, _do)
+        voice_controls._self_window_cb = _self_window
+
         _log_queue.put("   Voice engine loaded — starting loop\n\n")
         while True:
             stop_event.clear()
