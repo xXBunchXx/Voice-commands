@@ -1501,6 +1501,9 @@ class SettingsWidget(tk.Frame):
                 entry.delete(0, "end")
                 entry.insert(0, val)
                 entry.xview_moveto(0)
+            delays = user_config.get_word_delays()
+            for key, sp in self._cmd_delay_entries.items():
+                self._set_spin(sp, int(delays.get(key, 0)))
             self._reload_context_list()
             self._reload_groups_list()
             self._refresh_model_statuses()
