@@ -667,6 +667,98 @@ class AppManagerWidget(tk.Frame):
              "Find it in the store URL: store.steampowered.com/app/730/ → ID is  730"),
         ], on_submit)
 
+    # ── Search-to-add ─────────────────────────────────────────────────────────
+
+    def _load_candidates_bg(self):
+        """Build the combined searchable app list (Start Menu + registry + scan
+        folders) once, in the background, so search is instant afterwards."""
+        def _work():
+            cands = []
+            for fn in (_scan_start_menu, _scan_registry):
+                try:
+                    cands += fn()
+                except Exception:
+                    pass
+            for folder in user_config.get_scan_folders():
+                try:
+                    cands += _scan_folder(folder)
+                except Exception:
+                    pass
+            seen, deduped = set(), []
+            for r in cands:
+                k = r["path"].lower()
+                if k not in seen:
+                    seen.add(k); deduped.append(r)
+            deduped.sort(key=lambda x: x["display"].lower())
+            self._all_candidates = deduped
+            self.after(0, self._refresh_search_results)
+        threading.Thread(target=_work, daemon=True).start()
+
+    @staticmethod
+    def _candidate_matches(query: str, r: dict) -> bool:
+        q = query.lower().strip()
+        if not q:
+            return False
+        disp = r["display"].lower()
+        hay  = disp + " " + r["proc"].lower()
+        # every space-separated token must appear somewhere…
+        if all(tok in hay for tok in q.split()):
+            return True
+        # …or the query matches the acronym of the display name ("vsc" → VS Code)
+        acronym = "".join(w[0] for w in re.split(r"[\s\-]+", disp) if w)
+        return bool(acronym) and acronym.startswith(q.replace(" ", ""))
+
+    def _refresh_search_results(self):
+        for w in self._search_results.winfo_children():
+            w.destroy()
+        q = self._search_var.get().strip()
+        if not q:
+            return
+        if self._all_candidates is None:
+            self._lbl(self._search_results, "Loading installed apps…",
+                      fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w", pady=2)
+            return
+        matches = [r for r in self._all_candidates if self._candidate_matches(q, r)]
+        # rank: display starting with the query first, then by name length
+        ql = q.lower()
+        matches.sort(key=lambda r: (not r["display"].lower().startswith(ql),
+                                    len(r["display"])))
+        matches = matches[:8]
+        if not matches:
+            self._lbl(self._search_results, "No matches — try a different word, "
+                      "or use Browse / Scan below.",
+                      fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w", pady=2)
+            return
+        existing = {p.lower() for p in user_config.get_apps().values()}
+        for r in matches:
+            self._make_search_row(r, r["path"].lower() in existing)
+
+    def _make_search_row(self, r, already):
+        row = tk.Frame(self._search_results, bg=CARD)
+        row.pack(fill="x", pady=1)
+        btn = tk.Button(row, text=f"  {r['display']}", anchor="w",
+                        bg=ENTRY_BG, fg=(MUTED if already else FG),
+                        activebackground=ACC, activeforeground="#fff",
+                        relief="flat", font=("Segoe UI", 10), cursor="hand2",
+                        bd=0, padx=8, pady=4,
+                        command=lambda rr=r: self._pick_candidate(rr))
+        btn.pack(side="left", fill="x", expand=True)
+        tag = "  ✓ added" if already else r["proc"]
+        tk.Label(row, text=tag, bg=CARD, fg=MUTED,
+                 font=("Consolas", 8)).pack(side="right", padx=(6, 2))
+
+    def _pick_candidate(self, r):
+        for entry, val in ((self.e_name, r["name"]),
+                           (self.e_path, r["path"]),
+                           (self.e_proc, r["proc"])):
+            entry.delete(0, "end")
+            entry.insert(0, val)
+            entry.xview_moveto(0)
+        self.e_spoken.focus_set()
+        self._search_var.set("")
+        self._flash(f'Selected "{r["display"]}" — set a spoken name (optional), '
+                    f'then click Add Entry.')
+
     # ── Scan logic ────────────────────────────────────────────────────────────
 
     def _do_scan(self):
