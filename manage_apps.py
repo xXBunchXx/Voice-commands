@@ -714,7 +714,9 @@ class AppManagerWidget(tk.Frame):
         folders) once, in the background, so search is instant afterwards."""
         def _work():
             cands = []
-            for fn in (_scan_start_menu, _scan_registry):
+            # .lnk + registry first — they carry a real process name (so window
+            # management works).  AppsFolder last — it adds full Start coverage.
+            for fn in (_scan_start_menu, _scan_registry, _scan_apps_folder):
                 try:
                     cands += fn()
                 except Exception:
@@ -724,12 +726,17 @@ class AppManagerWidget(tk.Frame):
                     cands += _scan_folder(folder)
                 except Exception:
                     pass
-            seen, deduped = set(), []
+            # Dedupe by display name; keep the entry that has a process name
+            # (better for focus/close) over a bare shell:AppsFolder launcher.
+            by_name = {}
             for r in cands:
-                k = r["path"].lower()
-                if k not in seen:
-                    seen.add(k); deduped.append(r)
-            deduped.sort(key=lambda x: x["display"].lower())
+                key = r["display"].strip().lower()
+                if not key:
+                    continue
+                cur = by_name.get(key)
+                if cur is None or (not cur.get("proc") and r.get("proc")):
+                    by_name[key] = r
+            deduped = sorted(by_name.values(), key=lambda x: x["display"].lower())
             self._all_candidates = deduped
             self.after(0, self._refresh_search_results)
         threading.Thread(target=_work, daemon=True).start()
