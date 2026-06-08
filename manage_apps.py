@@ -1050,8 +1050,12 @@ class AppManagerWidget(tk.Frame):
         path   = self.e_path.get().strip()
         proc   = self.e_proc.get().strip()
         spoken = self.e_spoken.get().strip().lower()
-        if not name or not path or not proc:
-            messagebox.showwarning("Missing fields", "Please fill in all three fields.",
+        # Process name is optional for launch-only apps (e.g. Start "Apps" /
+        # Store / launcher-registered apps) which can be opened but not
+        # window-managed.  Display name + path are required.
+        if not name or not path:
+            messagebox.showwarning("Missing fields",
+                                   "Display name and Exe / path are required.",
                                    parent=self.winfo_toplevel())
             return
         if name in self._apps and not messagebox.askyesno(
