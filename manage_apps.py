@@ -666,7 +666,7 @@ class AppManagerWidget(tk.Frame):
                                    parent=self.winfo_toplevel())
             return
         if any(not name for _, name in selected):
-            messagebox.showwarning("Empty name", "One or more voice names are empty.",
+            messagebox.showwarning("Empty name", "One or more display names are empty.",
                                    parent=self.winfo_toplevel())
             return
         existing = user_config.get_apps()
