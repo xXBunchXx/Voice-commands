@@ -306,6 +306,27 @@ def set_response_delay(value: float) -> None:
     data["RESPONSE_DELAY"] = round(max(0.04, min(1.0, value)), 2)
     save(data)
 
+def get_word_delays() -> dict:
+    """Per-command grace times in milliseconds for bare action verbs.
+
+    {command_key: ms}.  When >0, saying the bare verb (e.g. "minimise") on its
+    own fires after this many ms, leaving that long for a following app name.
+    0 / missing = wait for normal end-of-speech (the old behaviour)."""
+    return load().get("WORD_DELAYS", {})
+
+def set_word_delays(delays: dict) -> None:
+    data = load()
+    clean = {}
+    for k, v in delays.items():
+        try:
+            ms = int(round(float(v)))
+        except (TypeError, ValueError):
+            continue
+        if ms > 0:
+            clean[k] = max(0, min(2000, ms))
+    data["WORD_DELAYS"] = clean
+    save(data)
+
 def get_dual_model_check() -> bool:
     """Whether to load the small model alongside the main model to filter
     hallucinated leading words (noise at the start of a command)."""
