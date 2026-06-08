@@ -405,6 +405,15 @@ class SettingsWidget(tk.Frame):
                      "leaving that gap to add an app name.  0 = wait for you to stop talking.",
                      fg=MUTED, font=("Segoe UI", 8), wraplength=560,
                      justify="left").pack(anchor="w", pady=(0, 4))
+                ms_label = "Wait (ms)"
+            else:
+                _lbl(card,
+                     "Speed (ms): how long the word must hold steady before it fires.  "
+                     "0 = use the global Response speed.  Set it low (e.g. 40) to make a "
+                     "command like copy/paste near-instant.",
+                     fg=MUTED, font=("Segoe UI", 8), wraplength=560,
+                     justify="left").pack(anchor="w", pady=(0, 4))
+                ms_label = "Speed (ms)"
             hdr = tk.Frame(card, bg=CARD)
             hdr.pack(fill="x", pady=(0, 4))
             w = 18
@@ -412,25 +421,22 @@ class SettingsWidget(tk.Frame):
                  width=w, anchor="w").pack(side="left")
             _lbl(hdr, "Trigger word(s)", fg=FG, font=("Segoe UI Semibold", 8),
                  anchor="w").pack(side="left")
-            if is_app_ctrl:
-                _lbl(hdr, "Wait (ms)", fg=FG, font=("Segoe UI Semibold", 8),
-                     anchor="w").pack(side="right")
+            _lbl(hdr, ms_label, fg=FG, font=("Segoe UI Semibold", 8),
+                 anchor="w").pack(side="right")
             for key in keys:
                 row = tk.Frame(card, bg=CARD)
                 row.pack(fill="x", pady=2)
                 _lbl(row, key.replace("_", " "), width=w, anchor="w").pack(side="left")
-                e = _inp(row, width=22 if is_app_ctrl else 28)
+                e = _inp(row, width=22)
                 e.pack(side="left")
                 self._cmd_entries[key] = e
-                if is_app_ctrl:
-                    dvar = tk.IntVar(value=0)
-                    dspin = tk.Spinbox(row, from_=0, to=2000, increment=10,
-                                       textvariable=dvar, width=6, bg=ENTRY_BG,
-                                       fg=FG, buttonbackground=CARD,
-                                       insertbackground=FG, relief="flat",
-                                       font=("Segoe UI", 10), justify="center")
-                    dspin.pack(side="right")
-                    self._cmd_delay_entries[key] = dspin
+                dspin = tk.Spinbox(row, from_=0, to=2000, increment=10,
+                                   textvariable=tk.IntVar(value=0), width=6, bg=ENTRY_BG,
+                                   fg=FG, buttonbackground=CARD,
+                                   insertbackground=FG, relief="flat",
+                                   font=("Segoe UI", 10), justify="center")
+                dspin.pack(side="right")
+                self._cmd_delay_entries[key] = dspin
 
         self._make_save_btn(inner, self._save_commands)
 
