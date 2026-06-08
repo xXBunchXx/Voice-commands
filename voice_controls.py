@@ -1057,9 +1057,7 @@ def handle_command(text: str) -> bool:
         print_diagnostic()
     elif words[0] in _cw_all("move"):
         if len(words) < 2:
-            pass   # bare "move" does nothing — needs a target + position
-        elif words[1] == "current":
-            snap_app(None, " ".join(words[2:]))      # focused window
+            print(f"  Say '{_cw('move')}' followed by an app name and/or position")
         else:
             app, rest = _parse_app(words, 1)
             if app:
