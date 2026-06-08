@@ -1339,6 +1339,11 @@ def handle_command(text: str) -> bool:
     last_command = text
     last_command_time = now
 
+    # App/group-specific custom command — overrides a built-in of the same name
+    # (e.g. "enter" → ctrl+enter inside Claude).  "any" commands don't override.
+    if _try_specific_context(text):
+        return False
+
     # ── Layouts: "save layout three" / "open layout three" ─────────────────
     if len(words) == 3 and words[1] == "layout" and words[2] in _NUMBER_WORDS:
         num = _NUMBER_WORDS[words[2]]
