@@ -19,6 +19,7 @@ from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from vosk import Model, KaldiRecognizer
 import user_config
+import audio_devices
 
 # In the --noconsole exe sys.stdout/stderr are None until the engine redirects
 # them, so guard this — otherwise importing the module (e.g. from the Listen
