@@ -998,6 +998,13 @@ class SettingsWidget(tk.Frame):
                         del cmds[old_phrase]
             cmds.setdefault(phrase_txt, {})[context_txt] = new_value
             user_config.set_context_commands(cmds)
+            # Per-command speed override (moves with the phrase if it was renamed)
+            if old_phrase and old_phrase.strip().lower() != phrase_txt:
+                user_config.set_context_delay(old_phrase, 0)
+            try:
+                user_config.set_context_delay(phrase_txt, int(speed_var.get()))
+            except Exception:
+                pass
             overlay.destroy()
             self._reload_context_list()
             verb = "Updated" if old_phrase else "Added"
