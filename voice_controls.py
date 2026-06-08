@@ -1006,6 +1006,26 @@ def _early_fire_set(grammar_json: str) -> set:
     return phrases
 
 
+# Extra time (seconds) an app-name command must hold steady before firing.
+# App names that sound alike ("files"/"firefox") need a moment for the decoder
+# to settle, otherwise the early-fire grabs Vosk's first (often wrong) guess.
+_APP_SETTLE_EXTRA = 0.12
+
+def _app_forms_set() -> set:
+    """All spoken forms of the configured apps (used to tell which complete
+    commands contain an app name, so they can be given longer to settle)."""
+    return {_spoken(a).lower() for a in APPS}
+
+def _phrase_has_app(phrase: str, app_forms: set) -> bool:
+    """True if any run of 1-3 words in *phrase* is an app name."""
+    parts = phrase.split()
+    for i in range(len(parts)):
+        for n in (3, 2, 1):
+            if i + n <= len(parts) and " ".join(parts[i:i + n]) in app_forms:
+                return True
+    return False
+
+
 # Bare verbs that do NOTHING useful on their own — they are pure prefixes that
 # always need an app/position to follow.  "open" especially is the start of more
 # grammar phrases than any other word, so the decoder hallucinates it during
