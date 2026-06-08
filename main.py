@@ -579,11 +579,14 @@ def main():
     b_stop  = mkbtn(engine_btns, "■  Stop Echo",
                     lambda: _stop_engine(status_var, b_start, b_stop),
                     color=MUTED, state="disabled")
+    b_restart = mkbtn(engine_btns, "↻  Restart Echo",
+                      lambda: _restart_engine_ui(root, status_var, b_start, b_stop),
+                      color=MUTED)
     b_start.config(command=lambda: _start_engine(root, status_var, b_start, b_stop))
     b_upd = mkbtn(engine_btns, "🔄  Check for Updates",
                   lambda: _check_updates_ui(root, status_var), color=MUTED)
 
-    for b in (b_start, b_stop, b_upd):
+    for b in (b_start, b_restart, b_stop, b_upd):
         b.pack(pady=3, fill="x")
 
     # Model path row
