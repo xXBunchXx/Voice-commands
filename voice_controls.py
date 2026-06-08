@@ -213,8 +213,10 @@ EXCLUDE_CLASSES: dict[str, set[str]] = {
 # Applied globally across all apps in addition to EXCLUDE_CLASSES.
 GLOBAL_EXCLUDE_CLASSES: set[str] = {"IME", "Default IME"}
 
-# Apps that may hide to the system tray.
+# Apps that may hide to the system tray — matched by config name OR process name
+# so they're handled however the user named them.
 INCLUDE_HIDDEN: set[str] = {"steam", "discord"}
+INCLUDE_HIDDEN_PROCS: set[str] = {"steam.exe", "discord.exe"}
 
 # When an app has many windows, prefer the one whose title contains this.
 PREFERRED_TITLE: dict[str, str] = {
