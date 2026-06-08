@@ -623,6 +623,22 @@ class AppManagerWidget(tk.Frame):
 
     # ── Quick-add handlers ────────────────────────────────────────────────────
 
+    @staticmethod
+    def _auto_proc_from_path(path: str) -> str:
+        """Process name = the part of an exe path after the last slash.
+        Returns '' for URLs / folders / shell: items (no process to match)."""
+        p = path.strip().strip('"')
+        if not p or "://" in p or p.lower().startswith(("ms-", "shell:")):
+            return ""
+        base = p.replace("/", "\\").split("\\")[-1]
+        return base if base.lower().endswith(".exe") else ""
+
+    def _sync_proc_from_path(self):
+        proc = self._auto_proc_from_path(self.e_path.get())
+        if proc:
+            self.e_proc.delete(0, "end")
+            self.e_proc.insert(0, proc)
+
     def _browse_exe(self):
         path = filedialog.askopenfilename(
             title="Select application executable",
