@@ -630,24 +630,32 @@ def open_or_focus(app_name: str) -> None:
         print(f"  Focused {app_name}!")
         _status(f"Focusing {app_name}")
         return
-    _ov = _open_override_for(app_name)
-    if _ov:
-        _ov()
-        print(f"▶  Opened/focused {app_name}!")
-        _status(f"Opening {app_name}")
-        return
+
     path = APPS[app_name]
     # URLs and folders just open — no window-focus logic needed
     if _is_url(path) or _is_folder(path):
         _launch(app_name)
         return
+
+    # ── Try to focus an existing window FIRST ──────────────────────────────
+    # _set_foreground restores from minimised/tray.  For apps with their own
+    # restore URI (Discord/Steam) this avoids using the URI when a window
+    # already exists, because e.g. discord:// also navigates Discord to its
+    # Friends view — focusing the window keeps whatever the user was looking at.
     hwnds = _windows_for_app(app_name)
     if hwnds:
         hwnd = _pick_window(hwnds, app_name)
-        win32gui.ShowWindow(hwnd, 9)
         _set_foreground(hwnd)
         print(f"▶  Focused {app_name}!")
         _status(f"Focusing {app_name}")
+        return
+
+    # ── No window found — use the app's own restore/launch handler ─────────
+    _ov = _open_override_for(app_name)
+    if _ov:
+        _ov()
+        print(f"▶  Opened {app_name}!")
+        _status(f"Opening {app_name}")
         return
     _launch(app_name)
 
