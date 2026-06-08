@@ -321,6 +321,7 @@ class SettingsWidget(tk.Frame):
         try:
             user_config.set_confidence_threshold(int(self._conf_spin.get()) / 100)
             user_config.set_cooldown(float(self._cooldown_spin.get()))
+            user_config.set_response_delay(int(self._response_spin.get()) / 1000)
             user_config.set_close_delay(int(self._delay_spin.get()))
             user_config.set_overlay_enabled(self._overlay_enabled.get())
             user_config.set_overlay_position(self._overlay_pos.get())
