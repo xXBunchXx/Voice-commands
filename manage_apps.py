@@ -364,8 +364,29 @@ class AppManagerWidget(tk.Frame):
         self._build_scan_page(self._scan_page)
         self._main_page.pack(fill="both", expand=True)
 
-    def _build_main_page(self, page):
+    def _build_main_page(self, outer):
         PAD = 12
+
+        # Scrollable body — shows a scrollbar whenever the content (e.g. search
+        # results) is taller than the window.
+        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0)
+        vbar   = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vbar.set)
+        vbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        page = tk.Frame(canvas, bg=BG)
+        _win = canvas.create_window((0, 0), window=page, anchor="nw")
+        page.bind("<Configure>",
+                  lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>",
+                    lambda e: canvas.itemconfig(_win, width=e.width))
+
+        def _on_wheel(e):
+            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        self._main_canvas = canvas
+        canvas.bind_all  # noqa  (kept simple — bind on enter/leave below)
+        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _on_wheel))
+        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
 
         tk.Label(page, text=f"Config: {user_config.config_path()}",
                  bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
