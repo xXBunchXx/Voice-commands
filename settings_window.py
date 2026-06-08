@@ -190,6 +190,13 @@ class SettingsWidget(tk.Frame):
         self._cooldown_spin.grid(row=3, column=0, sticky="w")
         _lbl(card, "seconds", fg=MUTED).grid(row=3, column=1, sticky="w", padx=(4, 0))
 
+        _lbl(card, "Response speed  (delay before a command fires — lower = snappier)").grid(
+            row=4, column=0, columnspan=3, sticky="w", pady=(12, 2))
+        self._response_spin = _spin(card, 40, 1000, tk.IntVar(), width=7)
+        self._response_spin.grid(row=5, column=0, sticky="w")
+        _lbl(card, "ms  (try 80–200; raise it if commands fire mid-sentence)",
+             fg=MUTED).grid(row=5, column=1, sticky="w", padx=(4, 0))
+
         sec2 = _section(frame, "Close-App Undo Window")
         sec2.pack(fill="x", padx=2, pady=(14, 0))
         card2 = _card(sec2); card2.pack(fill="x")
