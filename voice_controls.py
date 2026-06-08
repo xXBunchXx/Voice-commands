@@ -1611,6 +1611,7 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     COOLDOWN             = user_config.get_cooldown()
     PARTIAL_STABLE_SECS  = user_config.get_response_delay()
     _WORD_DELAYS         = user_config.get_word_delays()
+    _CONTEXT_DELAYS      = user_config.get_context_delays()
     _AUDIO_DEVICES       = user_config.get_audio_devices()
     _COMMAND_WORDS       = user_config.get_command_words()
     _VOLUME_STEPS        = user_config.get_volume_steps()
