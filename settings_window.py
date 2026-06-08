@@ -507,7 +507,7 @@ class SettingsWidget(tk.Frame):
 
             hdr = tk.Frame(self._ctx_inner, bg=CARD)
             hdr.pack(fill="x", pady=(8, 1))
-            tk.Label(hdr, text=f"  {icon}  {label}", bg=CARD, fg=color,
+            tk.Label(hdr, text=f"  {icon}  {label}", bg=CARD, fg=FG,
                      font=("Segoe UI Semibold", 10),
                      padx=6, pady=5).pack(side="left")
             hdr.bind("<MouseWheel>", _scroll_pass)
