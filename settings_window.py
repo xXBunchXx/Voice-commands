@@ -453,7 +453,7 @@ class SettingsWidget(tk.Frame):
 
     def _tab_context(self, nb):
         frame = tk.Frame(nb, bg=BG)
-        nb.add(frame, text="🖱  Context")
+        nb.add(frame, text="🖱  Custom Commands")
 
         top = tk.Frame(frame, bg=BG)
         top.pack(fill="x", padx=4, pady=(8, 4))
