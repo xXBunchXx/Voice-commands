@@ -629,8 +629,9 @@ def open_or_focus(app_name: str) -> None:
         print(f"  Focused {app_name}!")
         _status(f"Focusing {app_name}")
         return
-    if app_name in OPEN_OVERRIDE:
-        OPEN_OVERRIDE[app_name]()
+    _ov = _open_override_for(app_name)
+    if _ov:
+        _ov()
         print(f"▶  Opened/focused {app_name}!")
         _status(f"Opening {app_name}")
         return
