@@ -331,6 +331,23 @@ class AppManagerWidget(tk.Frame):
                  bg=BG, fg=MUTED, font=("Segoe UI", 8), anchor="w").pack(
             fill="x", padx=PAD, pady=(PAD, 0))
 
+        # ── Search-to-add (Start-menu style) ──────────────────────────────
+        find_sec = self._section(page, "🔍  Find an App")
+        find_sec.pack(fill="x", padx=PAD, pady=(8, 0))
+        find_card = tk.Frame(find_sec, bg=CARD, padx=10, pady=10)
+        find_card.pack(fill="x")
+        self._lbl(find_card,
+                  "Type part of an app's name (e.g. \"code\") and click the right one — "
+                  "its path is filled in for you. Then just add a spoken name and click Add Entry.",
+                  fg=MUTED, font=("Segoe UI", 8), wraplength=620, justify="left").pack(anchor="w")
+        self._search_var = tk.StringVar()
+        se = tk.Entry(find_card, textvariable=self._search_var, bg=ENTRY_BG, fg=FG,
+                      insertbackground=FG, relief="flat", font=("Segoe UI", 11), bd=5)
+        se.pack(fill="x", pady=(6, 4))
+        self._search_var.trace_add("write", lambda *a: self._refresh_search_results())
+        self._search_results = tk.Frame(find_card, bg=CARD)
+        self._search_results.pack(fill="x")
+
         # Quick-add row
         quick = tk.Frame(page, bg=BG)
         quick.pack(fill="x", padx=PAD, pady=(8, 0))
