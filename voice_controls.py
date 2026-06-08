@@ -1431,6 +1431,13 @@ def handle_command(text: str) -> bool:
     elif words[0] in _cw_all("move"):
         if len(words) < 2:
             print(f"  Say '{_cw('move')}' followed by an app name and/or position")
+        elif words[-2:] == ["to", "background"]:
+            app_words = words[1:-2]
+            if app_words:
+                app, _ = _parse_app(words[:-2], 1)
+                send_to_background(app) if app else send_to_background(None)
+            else:
+                send_to_background(None)          # current window
         else:
             app, rest = _parse_app(words, 1)
             if app:
