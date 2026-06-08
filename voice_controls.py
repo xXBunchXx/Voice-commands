@@ -1590,6 +1590,7 @@ def run(stop_event: _threading.Event | None = None) -> bool:
 
     # ── Low-latency partial tracking ──────────────────────────────────────
     _early_set     = _early_fire_set(grammar)   # complete commands we can fire early
+    _prefix_set    = _prefix_fire_set(grammar, _early_set)  # could still be extended
     _bare_delays   = _build_bare_delays()        # bare verb -> its own grace time
     _app_forms     = _app_forms_set()            # spoken app names (for settle time)
     _partial_text  = ""                          # last partial seen
