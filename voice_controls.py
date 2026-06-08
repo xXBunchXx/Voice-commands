@@ -908,55 +908,10 @@ def _parse_app(words: list[str], start: int) -> tuple[str | None, list[str]]:
 last_command = None
 last_command_time = 0
 
-# ── Ghost-command suppressor ──────────────────────────────────────────────
-# If the *same* phrase fires repeatedly without any other command in between
-# it's almost certainly background noise / hallucination.  After
-# GHOST_MAX_FIRES fires within GHOST_WINDOW seconds we mute that phrase for
-# GHOST_MUTE_SECS.  The mute is cleared automatically once the timer expires
-# or when the engine restarts.
-GHOST_MAX_FIRES  = 2     # fires within the window before suppression kicks in
-GHOST_WINDOW     = 5.0   # seconds — rolling window tracked per phrase
-GHOST_MUTE_SECS  = 15.0  # seconds to ignore the phrase after it trips
-
-_ghost_streak: dict[str, list[float]] = {}  # phrase → [fire timestamps]
-_ghost_muted:  dict[str, float]       = {}  # phrase → mute-until timestamp
-
-
-def _ghost_check(text: str, now: float) -> tuple[bool, bool]:
-    """Check whether *text* looks like a ghost/hallucination command.
-
-    Returns (suppressed, reset_rec):
-      suppressed – True when the phrase should be ignored this time.
-      reset_rec  – True only on the fire that *first* trips the mute, signalling
-                   the engine loop to call rec.Reset() so Vosk's accumulated
-                   audio state is flushed before the next real command.
-    """
-    # Already muted — silent suppression (no log spam)
-    until = _ghost_muted.get(text)
-    if until is not None:
-        if now < until:
-            return True, False      # suppress quietly; decoder already reset
-        else:
-            del _ghost_muted[text]  # mute expired — let it through
-
-    # Record this fire and prune old entries outside the rolling window
-    fires = _ghost_streak.setdefault(text, [])
-    fires.append(now)
-    fires[:] = [t for t in fires if now - t <= GHOST_WINDOW]
-
-    if len(fires) >= GHOST_MAX_FIRES:
-        _ghost_muted[text] = now + GHOST_MUTE_SECS
-        _ghost_streak[text] = []
-        # Only print once — when the mute first trips
-        print(f"🚫  Ghost muted: '{text}'  (muting for {GHOST_MUTE_SECS:.0f}s)")
-        return True, True           # suppress AND reset Vosk's decoder
-
-    return False, False
-
 
 def handle_command(text: str) -> bool:
     """Process one recognised phrase.
-    Returns True if the Vosk decoder should be reset (ghost suppressor tripped)."""
+    Returns True if the Vosk decoder should be reset (unused now, kept for API)."""
     global last_command, last_command_time
     if not text:
         return False
@@ -966,11 +921,6 @@ def handle_command(text: str) -> bool:
     # Identical-repeat cooldown (fast re-fires of the same phrase)
     if text == last_command and (now - last_command_time) < COOLDOWN:
         return False
-
-    # Ghost-command suppressor (slow-repeat hallucinations)
-    suppressed, reset_rec = _ghost_check(text, now)
-    if suppressed:
-        return reset_rec
 
     last_command = text
     last_command_time = now
