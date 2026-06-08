@@ -392,6 +392,7 @@ class SettingsWidget(tk.Frame):
                    lambda e: canvas.yview_scroll(-1*(e.delta//120), "units"))
 
         self._cmd_entries = {}
+        self._cmd_delay_entries = {}
         groups = [
             ("Media",       ["skip", "previous", "rewind", "play_pause", "mute"]),
             ("Keyboard",    ["copy", "paste", "save", "enter", "undo"]),
@@ -399,9 +400,16 @@ class SettingsWidget(tk.Frame):
             ("Engine",      ["diagnose", "stop_engine", "restart_engine"]),
         ]
         for group_name, keys in groups:
+            is_app_ctrl = (group_name == "App control")
             sec = _section(inner, group_name)
             sec.pack(fill="x", padx=4, pady=(8, 0))
             card = _card(sec); card.pack(fill="x")
+            if is_app_ctrl:
+                _lbl(card,
+                     "Wait (ms): saying the bare verb on its own fires after this long, "
+                     "leaving that gap to add an app name.  0 = wait for you to stop talking.",
+                     fg=MUTED, font=("Segoe UI", 8), wraplength=560,
+                     justify="left").pack(anchor="w", pady=(0, 4))
             hdr = tk.Frame(card, bg=CARD)
             hdr.pack(fill="x", pady=(0, 4))
             w = 18
@@ -409,13 +417,25 @@ class SettingsWidget(tk.Frame):
                  width=w, anchor="w").pack(side="left")
             _lbl(hdr, "Trigger word(s)", fg=FG, font=("Segoe UI Semibold", 8),
                  anchor="w").pack(side="left")
+            if is_app_ctrl:
+                _lbl(hdr, "Wait (ms)", fg=FG, font=("Segoe UI Semibold", 8),
+                     anchor="w").pack(side="right")
             for key in keys:
                 row = tk.Frame(card, bg=CARD)
                 row.pack(fill="x", pady=2)
                 _lbl(row, key.replace("_", " "), width=w, anchor="w").pack(side="left")
-                e = _inp(row, width=28)
+                e = _inp(row, width=22 if is_app_ctrl else 28)
                 e.pack(side="left")
                 self._cmd_entries[key] = e
+                if is_app_ctrl:
+                    dvar = tk.IntVar(value=0)
+                    dspin = tk.Spinbox(row, from_=0, to=2000, increment=10,
+                                       textvariable=dvar, width=6, bg=ENTRY_BG,
+                                       fg=FG, buttonbackground=CARD,
+                                       insertbackground=FG, relief="flat",
+                                       font=("Segoe UI", 10), justify="center")
+                    dspin.pack(side="right")
+                    self._cmd_delay_entries[key] = dspin
 
         self._make_save_btn(inner, self._save_commands)
 
@@ -423,6 +443,13 @@ class SettingsWidget(tk.Frame):
         try:
             words = {k: e.get().strip() for k, e in self._cmd_entries.items()}
             user_config.set_command_words(words)
+            delays = {}
+            for k, sp in self._cmd_delay_entries.items():
+                try:
+                    delays[k] = int(sp.get())
+                except (ValueError, TypeError):
+                    delays[k] = 0
+            user_config.set_word_delays(delays)
             self._flash("✓  Command words saved — restart engine to apply.")
         except Exception as e:
             self._flash(f"Error: {e}", RED)
