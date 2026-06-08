@@ -509,6 +509,17 @@ class AppManagerWidget(tk.Frame):
                                     font=("Segoe UI", 9), anchor="w")
         self._status_lbl.pack(fill="x", padx=PAD, pady=(PAD, PAD))
 
+        # Route mouse-wheel over any child widget to the scrolling canvas.
+        self._bind_wheel(page)
+
+    def _bind_wheel(self, widget):
+        try:
+            widget.bind("<MouseWheel>", self._wheel_handler)
+        except Exception:
+            pass
+        for child in widget.winfo_children():
+            self._bind_wheel(child)
+
     def _build_scan_page(self, page):
         # Header
         hdr = tk.Frame(page, bg=BG)
