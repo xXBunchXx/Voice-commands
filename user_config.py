@@ -296,6 +296,16 @@ def set_cooldown(value: float) -> None:
     data["COOLDOWN"] = round(max(0.0, value), 1)
     save(data)
 
+def get_response_delay() -> float:
+    """Seconds a partial result must hold steady before a command fires.
+    Lower = snappier response; higher = more tolerant of mid-phrase pauses."""
+    return float(load().get("RESPONSE_DELAY", 0.12))
+
+def set_response_delay(value: float) -> None:
+    data = load()
+    data["RESPONSE_DELAY"] = round(max(0.04, min(1.0, value)), 2)
+    save(data)
+
 def get_dual_model_check() -> bool:
     """Whether to load the small model alongside the main model to filter
     hallucinated leading words (noise at the start of a command)."""
