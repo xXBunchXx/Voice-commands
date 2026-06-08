@@ -699,14 +699,19 @@ class AppManagerWidget(tk.Frame):
         q = query.lower().strip()
         if not q:
             return False
-        disp = r["display"].lower()
-        hay  = disp + " " + r["proc"].lower()
-        # every space-separated token must appear somewhere…
-        if all(tok in hay for tok in q.split()):
-            return True
-        # …or the query matches the acronym of the display name ("vsc" → VS Code)
+        disp    = r["display"].lower()
+        hay     = disp + " " + r["proc"].lower()
         acronym = "".join(w[0] for w in re.split(r"[\s\-]+", disp) if w)
-        return bool(acronym) and acronym.startswith(q.replace(" ", ""))
+        # Whole query as an acronym, e.g. "vsc" → Visual Studio Code, "gc" → Google Chrome
+        if acronym and acronym.startswith(q.replace(" ", "")):
+            return True
+        # Otherwise every token must be a substring OR an acronym prefix, so
+        # "vs code" works (vs = acronym prefix, code = substring).
+        for tok in q.split():
+            if tok in hay or (acronym and acronym.startswith(tok)):
+                continue
+            return False
+        return True
 
     def _refresh_search_results(self):
         for w in self._search_results.winfo_children():
