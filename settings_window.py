@@ -505,12 +505,10 @@ class SettingsWidget(tk.Frame):
             if is_known:
                 label = ctx_name
             elif is_custom_group:
-                members = ", ".join(groups[ctx_name][:3])
-                if len(groups[ctx_name]) > 3:
-                    members += "…"
-                label = f"{ctx_name}  (group: {members})"
+                label = f"{ctx_name}  (group)"
             else:
-                label = f"{ctx_name}  (app)"
+                display = proc_to_display.get(ctx_name.lower(), ctx_name)
+                label = f"{display}  (app)"
 
             hdr = tk.Frame(self._ctx_inner, bg=CARD)
             hdr.pack(fill="x", pady=(8, 1))
