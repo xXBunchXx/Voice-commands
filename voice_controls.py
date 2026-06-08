@@ -1141,9 +1141,11 @@ def build_grammar(active_proc: str = "") -> str:
     for mvw in _cw_all("move"):
         for pos in SNAP_POSITIONS:
             words.append(f"{mvw} {pos}")
+        words.append(f"{mvw} to background")          # current window
         for app in APPS:
             for pos in SNAP_POSITIONS:
                 words.append(f"{mvw} {_spoken(app)} {pos}")
+            words.append(f"{mvw} {_spoken(app)} to background")
 
     for mgw in _cw_all("merge"):
         words.append(mgw)
