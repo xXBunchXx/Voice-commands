@@ -682,11 +682,14 @@ class SettingsWidget(tk.Frame):
             init_steps    = []
             init_repeat   = 1
 
+        init_speed   = user_config.get_context_delays().get(
+            (old_phrase or phrase).strip().lower(), 0)
         phrase_var   = tk.StringVar(value=phrase)
         context_var  = tk.StringVar(value=context)
         mode_var     = tk.StringVar(value=init_mode)
         shortcut_var = tk.StringVar(value=init_shortcut)
         repeat_var   = tk.IntVar(value=init_repeat)
+        speed_var    = tk.IntVar(value=init_speed)
         steps        = list(init_steps)
 
         def field_row(label, widget_fn):
