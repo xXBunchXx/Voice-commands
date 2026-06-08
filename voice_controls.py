@@ -239,6 +239,23 @@ OPEN_OVERRIDE = {
     "discord": lambda: os.startfile("discord://"),
 }
 
+# The same overrides keyed by PROCESS name, so they apply no matter what the user
+# named the app in their config.  Win32 SetForegroundWindow can't reliably restore
+# these apps from a minimised/tray state, but their own URI handler always can.
+PROC_OPEN_OVERRIDE = {
+    "steam.exe":   lambda: os.startfile("steam://open/main"),
+    "discord.exe": lambda: os.startfile("discord://"),
+}
+
+def _open_override_for(app_name: str):
+    """Return the special open/focus handler for an app, matched by its config
+    key OR its process name (so e.g. Discord restores correctly however it was
+    added).  Returns None if the app has no override."""
+    if app_name in OPEN_OVERRIDE:
+        return OPEN_OVERRIDE[app_name]
+    proc = (PROC_NAMES.get(app_name, "") or "").lower()
+    return PROC_OPEN_OVERRIDE.get(proc)
+
 # Special launch for new instances.
 LAUNCH_OVERRIDE = {
     "files":   lambda: subprocess.Popen(["explorer.exe"]),
