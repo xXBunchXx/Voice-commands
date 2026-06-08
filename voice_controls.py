@@ -915,6 +915,26 @@ def build_grammar(active_proc: str = "") -> str:
     return json.dumps(out)
 
 
+def _early_fire_set(grammar_json: str) -> set:
+    """Return the grammar phrases that are safe to execute as soon as a partial
+    result stabilises — i.e. complete, actionable commands.
+
+    Bare action verbs ("open", "close", …) are excluded: on their own they're
+    just prefixes still waiting for an app/position, so firing them early would
+    cut the user off mid-phrase.  Everything else (one-shots, "open firefox",
+    "volume up three", "move left", …) is a complete command.
+    """
+    try:
+        phrases = set(json.loads(grammar_json))
+    except Exception:
+        return set()
+    phrases.discard("[unk]")
+    for key in ("open", "close", "minimise", "maximise", "move", "merge"):
+        for v in _cw_all(key):
+            phrases.discard(v)
+    return phrases
+
+
 def average_confidence(result: dict) -> float:
     words = result.get("result", [])
     if not words:
