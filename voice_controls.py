@@ -1222,19 +1222,21 @@ def _command_trigger_words() -> set:
     return s
 
 
-def _build_bare_delays() -> dict:
-    """Map a bare action-verb phrase -> required stable time in SECONDS, from the
-    user's per-command grace settings.
+def _build_cmd_timing() -> dict:
+    """Map a command's trigger word -> required stable time in SECONDS, from the
+    user's per-command timing settings (Commands tab "Speed (ms)").
 
-    Only verbs whose bare form is a *real* standalone action are eligible
-    (minimise/maximise act on the focused window, merge merges Explorer).  The
-    pure-prefix verbs (open/close/move) are never fired early — that's what
-    caused stray hallucinated "open" commands."""
-    eligible = ("minimise", "maximise", "merge")
+    Applies to ANY command:
+      • terminal commands (copy / paste / skip / …) — overrides the global
+        response speed for that phrase, so you can make them near-instant.
+      • bare action verbs (minimise / maximise / merge) — the grace time before
+        the bare form fires, leaving room for a following app name.
+
+    Only values > 0 are included; 0 / unset means "use the default timing".
+    The pure-prefix verbs open / close / move never early-fire regardless
+    (they're suppressed by _is_null_bare)."""
     out = {}
     for key, ms in (_WORD_DELAYS or {}).items():
-        if key not in eligible:
-            continue
         try:
             ms = int(ms)
         except (TypeError, ValueError):
