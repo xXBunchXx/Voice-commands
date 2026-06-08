@@ -1140,9 +1140,13 @@ _SMALL_MODEL_NAME = "vosk-model-small-en-us-0.15"
 # Cached model for the "Listen" feature so repeated uses don't reload it.
 _listen_model = None
 
-def listen_once(seconds: float = 2.0) -> str:
+def listen_once(seconds: float = 2.0, on_start=None) -> str:
     """Record *seconds* of audio with an OPEN-vocabulary recogniser (no grammar
     restriction) and return what was heard, lowercased.
+
+    *on_start* (if given) is called the moment recording actually begins, after
+    the model has loaded — so the UI can prompt the user to speak at the right
+    time rather than during the initial model load.
 
     Used by the App Manager's "Listen" button to discover how Vosk actually
     hears a spoken app name, so the user can use that as the spoken name.
@@ -1159,6 +1163,9 @@ def listen_once(seconds: float = 2.0) -> str:
                      input=True, frames_per_buffer=FRAMES_PER_BUFFER)
     try:
         stream.start_stream()
+        if on_start:
+            try: on_start()
+            except Exception: pass
         needed = int(SAMPLE_RATE * max(0.2, seconds))
         read = 0
         while read < needed:
