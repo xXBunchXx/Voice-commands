@@ -615,21 +615,32 @@ def main():
     mkbtn(path_row, "Browse…", _pick_model, color=MUTED, width=8).pack(
         side="right", padx=(6, 0))
 
-    # Debug log
-    debug_frame = tk.Frame(engine_tab, bg=BG)
-    debug_frame.pack(fill="both", expand=True, padx=16, pady=(10, 0))
+    # Debug log — hidden by default; shown only when the box is ticked.
+    debug_ctrl = tk.Frame(engine_tab, bg=BG)
+    debug_ctrl.pack(fill="x", padx=16, pady=(10, 0))
 
-    debug_header = tk.Frame(debug_frame, bg=BG)
-    debug_header.pack(fill="x")
-    tk.Label(debug_header, text="Debug log", bg=BG, fg=MUTED,
-             font=("Segoe UI Semibold", 9)).pack(side="left")
+    debug_frame = tk.Frame(engine_tab, bg=BG)   # holds the log; packed on demand
 
     def _clear_log():
         log_box.config(state="normal")
         log_box.delete("1.0", "end")
         log_box.config(state="disabled")
 
-    mkbtn(debug_header, "Clear", _clear_log, color=MUTED, width=6).pack(side="right")
+    show_log_var = tk.BooleanVar(value=False)
+
+    def _toggle_log():
+        if show_log_var.get():
+            debug_frame.pack(fill="both", expand=True, padx=16, pady=(4, 8))
+            clear_btn.pack(side="right")
+        else:
+            debug_frame.pack_forget()
+            clear_btn.pack_forget()
+
+    tk.Checkbutton(debug_ctrl, text="Show debug log", variable=show_log_var,
+                   command=_toggle_log, bg=BG, fg=FG, selectcolor=CARD,
+                   activebackground=BG, activeforeground=FG,
+                   font=("Segoe UI", 9)).pack(side="left")
+    clear_btn = mkbtn(debug_ctrl, "Clear", _clear_log, color=MUTED, width=6)
 
     log_box = scrolledtext.ScrolledText(
         debug_frame, height=14, wrap="word",
