@@ -1186,6 +1186,83 @@ class SettingsWidget(tk.Frame):
         _btn(btn_row, "Save", _save).pack(side="right", padx=(8, 0))
         _btn(btn_row, "Cancel", _cancel, color=MUTED).pack(side="right")
 
+    # ── Audio tab ───────────────────────────────────────────────────────────
+
+    def _tab_audio(self, nb):
+        frame = tk.Frame(nb, bg=BG)
+        nb.add(frame, text="🔊  Audio")
+
+        top = tk.Frame(frame, bg=BG)
+        top.pack(fill="x", padx=4, pady=(8, 4))
+        _lbl(top,
+             "Give a spoken name to each output device you want to switch to, then say "
+             "\"change to <name>\" to make it the default.\n"
+             "Leave a name blank to ignore that device.",
+             fg=MUTED, font=("Segoe UI", 8), justify="left").pack(side="left")
+        _btn(top, "↻  Refresh devices", self._reload_audio_list).pack(side="right")
+
+        list_outer = tk.Frame(frame, bg=CARD)
+        list_outer.pack(fill="both", expand=True, padx=4, pady=(4, 8))
+        self._audio_canvas = tk.Canvas(list_outer, bg=CARD, highlightthickness=0)
+        sb = ttk.Scrollbar(list_outer, orient="vertical", command=self._audio_canvas.yview)
+        self._audio_canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._audio_canvas.pack(side="left", fill="both", expand=True)
+        self._audio_inner = tk.Frame(self._audio_canvas, bg=CARD)
+        _awin = self._audio_canvas.create_window((0, 0), window=self._audio_inner, anchor="nw")
+        self._audio_inner.bind("<Configure>",
+                               lambda e: self._audio_canvas.configure(
+                                   scrollregion=self._audio_canvas.bbox("all")))
+        self._audio_canvas.bind("<Configure>",
+                                lambda e: self._audio_canvas.itemconfig(_awin, width=e.width))
+
+        self._make_save_btn(frame, self._save_audio)
+        self._audio_name_vars = {}   # device_id -> (StringVar, friendly_name)
+        self._reload_audio_list()
+
+    def _reload_audio_list(self):
+        for w in self._audio_inner.winfo_children():
+            w.destroy()
+        self._audio_name_vars = {}
+        try:
+            import audio_devices
+            devices = audio_devices.list_output_devices()
+        except Exception as e:
+            tk.Label(self._audio_inner, text=f"Couldn't read audio devices: {e}",
+                     bg=CARD, fg=RED, font=("Segoe UI", 9)).pack(anchor="w", padx=8, pady=8)
+            return
+        if not devices:
+            tk.Label(self._audio_inner, text="No output devices found.",
+                     bg=CARD, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=8, pady=8)
+            return
+        saved = user_config.get_audio_devices()
+        id_to_name = {v.get("id"): k for k, v in saved.items()}
+        for dev_id, friendly in devices:
+            row = tk.Frame(self._audio_inner, bg=CARD)
+            row.pack(fill="x", padx=6, pady=3)
+            tk.Label(row, text=friendly, bg=CARD, fg=FG, width=42, anchor="w",
+                     font=("Segoe UI", 9)).pack(side="left")
+            tk.Label(row, text="say:", bg=CARD, fg=MUTED,
+                     font=("Segoe UI", 8)).pack(side="left", padx=(8, 2))
+            var = tk.StringVar(value=id_to_name.get(dev_id, ""))
+            ent = tk.Entry(row, textvariable=var, width=18, bg=ENTRY_BG, fg=FG,
+                           insertbackground=FG, relief="flat", font=("Segoe UI", 9), bd=4)
+            ent.pack(side="left")
+            self._audio_name_vars[dev_id] = (var, friendly)
+
+    def _save_audio(self):
+        try:
+            devices = {}
+            for dev_id, (var, friendly) in self._audio_name_vars.items():
+                spoken = var.get().strip().lower()
+                if spoken:
+                    devices[spoken] = {"id": dev_id, "name": friendly}
+            user_config.set_audio_devices(devices)
+            n = len(devices)
+            self._flash(f"✓  Saved {n} audio device name(s) — restart engine to apply.")
+        except Exception as e:
+            self._flash(f"Error: {e}", RED)
+
     # ── Models tab ────────────────────────────────────────────────────────────
 
     def _tab_models(self, nb):
