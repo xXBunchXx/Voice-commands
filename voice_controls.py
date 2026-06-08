@@ -1151,15 +1151,18 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     print("Loading model...")
     model   = Model(MODEL_PATH)
     grammar = build_grammar(_get_active_proc())
-    rec     = KaldiRecognizer(model, SAMPLE_RATE)
-    rec.SetGrammar(grammar)
+    # Build the recogniser with the grammar passed to the constructor rather than
+    # rec.SetGrammar() — SetGrammar mid-stream is unstable and crashes Vosk; the
+    # constructor path safely ignores any out-of-vocabulary words instead.
+    rec     = KaldiRecognizer(model, SAMPLE_RATE, grammar)
     rec.SetWords(True)
 
     # ── Optionally load small reference model for dual-model ghost check ──
     # When the main model is NOT the small model itself, try to load the small
     # model from the same folder.  It runs in parallel, receiving the same audio,
     # and its first word is used to validate the main model's output.
-    rec_ref = None
+    rec_ref   = None
+    model_ref = None
     _ref_last_text = ""          # most recent finalised text from the ref model
 
     small_path = pathlib.Path(MODEL_PATH).parent / _SMALL_MODEL_NAME
@@ -1168,8 +1171,7 @@ def run(stop_event: _threading.Event | None = None) -> bool:
         try:
             print(f"Loading reference model ({_SMALL_MODEL_NAME}) for dual-model ghost check…")
             model_ref = Model(str(small_path))
-            rec_ref   = KaldiRecognizer(model_ref, SAMPLE_RATE)
-            rec_ref.SetGrammar(grammar)
+            rec_ref   = KaldiRecognizer(model_ref, SAMPLE_RATE, grammar)
             print("  ✓  Dual-model ghost check active.")
         except Exception as _e:
             print(f"  ✗  Could not load reference model: {_e}")
