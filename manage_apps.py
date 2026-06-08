@@ -346,6 +346,8 @@ class AppManagerWidget(tk.Frame):
         self.e_edit_path.grid  (row=1, column=0, sticky="ew", pady=(2, 0))
         self.e_edit_proc.grid  (row=1, column=1, sticky="ew", padx=(10, 0), pady=(2, 0))
         self.e_edit_spoken.grid(row=1, column=2, sticky="ew", padx=(10, 0), pady=(2, 0))
+        self._make_listen_widget(edit_grid, self.e_edit_spoken).grid(
+            row=2, column=2, sticky="w", padx=(10, 0), pady=(4, 0))
 
         # Browse button for path
         browse_row = tk.Frame(del_card, bg=CARD)
