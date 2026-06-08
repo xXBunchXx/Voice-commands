@@ -62,6 +62,7 @@ _CONTEXT_COMMANDS:   dict[str, dict[str, str]]  = user_config.DEFAULT_CONTEXT_CO
 _SPOKEN_NAMES:       dict[str, str]             = {}   # display_name → spoken_name
 _SPOKEN_TO_DISPLAY:  dict[str, str]             = {}   # spoken_name  → display_name
 _WORD_DELAYS:        dict[str, int]             = {}   # command_key  → grace ms for bare verb
+_CONTEXT_DELAYS:     dict[str, int]             = {}   # custom-command phrase → speed ms
 _AUDIO_DEVICES:      dict[str, dict]            = {}   # spoken_name  → {"id":..., "name":...}
 
 
