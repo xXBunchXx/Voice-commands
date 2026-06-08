@@ -157,6 +157,7 @@ class SettingsWidget(tk.Frame):
         self._tab_commands(nb)
         self._tab_context(nb)
         self._tab_groups(nb)
+        self._tab_audio(nb)
         self._tab_models(nb)
 
         self._status = tk.Label(self, text="", bg=BG, fg=GRN,
