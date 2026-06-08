@@ -1131,6 +1131,24 @@ def _early_fire_set(grammar_json: str) -> set:
     return phrases
 
 
+def _prefix_fire_set(grammar_json: str, early_set: set) -> set:
+    """Complete commands that are ALSO the start of a longer grammar phrase
+    (e.g. "save" → "save layout three", "open files" → "open files left").
+
+    These get a little extra settle time before firing so the early-fire doesn't
+    act on the short version while the user is still saying the long one."""
+    try:
+        all_phrases = [p for p in json.loads(grammar_json) if p != "[unk]"]
+    except Exception:
+        return set()
+    out = set()
+    for p in early_set:
+        pfx = p + " "
+        if any(q != p and q.startswith(pfx) for q in all_phrases):
+            out.add(p)
+    return out
+
+
 # Extra time (seconds) an app-name command must hold steady before firing.
 # App names that sound alike ("files"/"firefox") need a moment for the decoder
 # to settle, otherwise the early-fire grabs Vosk's first (often wrong) guess.
