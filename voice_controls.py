@@ -1458,6 +1458,11 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                     if not text:
                         continue
 
+                # Ignore a bare prefix-verb on its own (e.g. a stray "open"
+                # hallucinated during silence) — it has no standalone action.
+                if _is_null_bare(text):
+                    continue
+
                 conf = average_confidence(result)
                 if conf >= CONFIDENCE_THRESHOLD:
                     notes = []
