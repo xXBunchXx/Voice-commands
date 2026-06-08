@@ -1444,15 +1444,23 @@ def run(stop_event: _threading.Event | None = None) -> bool:
                 if partial != _partial_text:
                     _partial_text  = partial
                     _partial_since = tnow
-                elif (partial and partial in _early_set
-                        and (tnow - _partial_since) >= PARTIAL_STABLE_SECS):
-                    print(f"🎤  '{partial}'")
-                    handle_command(partial)
-                    rec.Reset()
-                    if rec_ref is not None:
-                        rec_ref.Reset()
-                        _ref_last_text = ""
-                    _partial_text = ""
+                elif partial:
+                    # Complete commands fire after the global response delay;
+                    # bare action verbs fire after their own per-verb grace time.
+                    if partial in _early_set:
+                        required = PARTIAL_STABLE_SECS
+                    elif partial in _bare_delays:
+                        required = _bare_delays[partial]
+                    else:
+                        required = None
+                    if required is not None and (tnow - _partial_since) >= required:
+                        print(f"🎤  '{partial}'")
+                        handle_command(partial)
+                        rec.Reset()
+                        if rec_ref is not None:
+                            rec_ref.Reset()
+                            _ref_last_text = ""
+                        _partial_text = ""
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
