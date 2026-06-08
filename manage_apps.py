@@ -200,6 +200,54 @@ class AppManagerWidget(tk.Frame):
         kw.setdefault("font", ("Segoe UI", 9))
         return tk.Label(parent, text=text, bg=parent["bg"], **kw)
 
+    def _make_listen_widget(self, parent, target_entry):
+        """A duration spinbox + 'Listen' button that records open-vocabulary
+        speech and drops what it heard into *target_entry* (a spoken-name field)."""
+        fr = tk.Frame(parent, bg=parent["bg"])
+        dur = tk.DoubleVar(value=2.0)
+        spin = tk.Spinbox(fr, from_=0.2, to=10.0, increment=0.1, textvariable=dur,
+                          width=4, bg=ENTRY_BG, fg=FG, buttonbackground=CARD,
+                          insertbackground=FG, relief="flat",
+                          font=("Segoe UI", 9), justify="center")
+        spin.pack(side="left")
+        tk.Label(fr, text="s", bg=parent["bg"], fg=MUTED,
+                 font=("Segoe UI", 8)).pack(side="left", padx=(2, 6))
+        btn = self._btn(fr, "🎤 Listen", lambda: None, color=MUTED)
+        btn.config(command=lambda: self._do_listen(target_entry, dur, btn))
+        btn.pack(side="left")
+        return fr
+
+    def _do_listen(self, entry, dur_var, btn):
+        try:
+            secs = float(dur_var.get())
+        except Exception:
+            secs = 2.0
+        btn.config(state="disabled", text="Listening…")
+        self._flash(f"Listening for {secs:.1f}s — say the name now…", "#fbbf24")
+        self.update_idletasks()
+
+        def _work():
+            text, err = "", ""
+            try:
+                import voice_controls
+                text = voice_controls.listen_once(secs)
+            except Exception as e:
+                err = str(e)
+
+            def _done():
+                btn.config(state="normal", text="🎤 Listen")
+                if err:
+                    self._flash(f"Listen failed: {err}", RED)
+                elif text:
+                    entry.delete(0, "end")
+                    entry.insert(0, text)
+                    self._flash(f'Heard "{text}" — set as spoken name.')
+                else:
+                    self._flash("Didn't catch anything — try again.", RED)
+            self.after(0, _done)
+
+        threading.Thread(target=_work, daemon=True).start()
+
     def _section(self, parent, title):
         f = tk.Frame(parent, bg=BG)
         tk.Label(f, text=title, bg=BG, fg=FG,
