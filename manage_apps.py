@@ -391,11 +391,10 @@ class AppManagerWidget(tk.Frame):
         # Quick-add row
         quick = tk.Frame(page, bg=BG)
         quick.pack(fill="x", padx=PAD, pady=(8, 0))
-        self._btn(quick, "📂  Browse for App",    self._browse_exe,     MUTED).pack(side="left")
+        self._btn(quick, "📂  Manually add App",  self._browse_exe,     MUTED).pack(side="left")
         self._btn(quick, "🌐  Add Website",        self._add_website,    MUTED).pack(side="left", padx=(8, 0))
         self._btn(quick, "📁  Add Folder",         self._add_folder,     MUTED).pack(side="left", padx=(8, 0))
         self._btn(quick, "🎮  Add Steam Game",     self._add_steam_game, MUTED).pack(side="left", padx=(8, 0))
-        self._btn(quick, "🔍  Scan Installed Apps",self._go_scan,        MUTED).pack(side="left", padx=(8, 0))
 
         # Add / Edit
         add_sec = self._section(page, "➕  Add / Edit Entry")
