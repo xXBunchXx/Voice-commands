@@ -490,7 +490,8 @@ def _windows_for_app(app_name: str) -> list[int]:
         _refresh_pid_cache()
 
     excluded     = EXCLUDE_CLASSES.get(app_name, set()) | GLOBAL_EXCLUDE_CLASSES
-    allow_hidden = app_name in INCLUDE_HIDDEN
+    allow_hidden = (app_name in INCLUDE_HIDDEN
+                    or (PROC_NAMES.get(app_name, "") or "").lower() in INCLUDE_HIDDEN_PROCS)
     found = []
 
     def _cb(hwnd, _):
