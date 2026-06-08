@@ -473,6 +473,7 @@ def _schema_defaults() -> dict:
         "RESPONSE_DELAY":       0.12,  # seconds a partial must hold before firing
         "WORD_DELAYS":          {},    # {command_key: ms} bare-verb grace times
         "LAYOUTS":              {},    # {"1": [window snapshot...], ...}  saved layouts
+        "AUDIO_DEVICES":        {},    # {spoken_name: {"id":..., "name":...}}  audio outputs
         "COMMAND_WORDS":        DEFAULT_COMMAND_WORDS.copy(),
         "VOLUME_STEPS":         DEFAULT_VOLUME_STEPS.copy(),
         "CONTEXT_COMMANDS":     {},   # empty = use all defaults
