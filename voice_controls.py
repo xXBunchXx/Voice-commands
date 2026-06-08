@@ -995,13 +995,47 @@ def _early_fire_set(grammar_json: str) -> set:
     return phrases
 
 
+# Bare verbs that do NOTHING useful on their own — they are pure prefixes that
+# always need an app/position to follow.  "open" especially is the start of more
+# grammar phrases than any other word, so the decoder hallucinates it during
+# silence; since acting on a bare one is pointless we ignore them entirely.
+_NULL_BARE_KEYS = ("open", "close", "move")
+
+def _is_null_bare(text: str) -> bool:
+    """True if *text* is exactly a bare prefix-verb that has no standalone action."""
+    for key in _NULL_BARE_KEYS:
+        if text in _cw_all(key):
+            return True
+    return False
+
+
+def _command_trigger_words() -> set:
+    """All single trigger words that are themselves complete/standalone commands.
+    Used by the dual-model filter to tell a real 'open <app>' (keep) from a
+    hallucinated 'open <command>' ghost (strip)."""
+    keys = ("skip", "previous", "rewind", "play_pause", "mute", "copy", "paste",
+            "save", "enter", "undo", "diagnose", "stop_engine", "restart_engine",
+            "open", "close", "minimise", "maximise", "move", "merge")
+    s = set()
+    for k in keys:
+        s.update(_cw_all(k))
+    s.add("play")
+    return s
+
+
 def _build_bare_delays() -> dict:
     """Map a bare action-verb phrase -> required stable time in SECONDS, from the
-    user's per-command grace settings.  Only verbs with a configured delay > 0
-    are included; those bare verbs then fire early after their own grace time
-    (instead of waiting for full end-of-speech)."""
+    user's per-command grace settings.
+
+    Only verbs whose bare form is a *real* standalone action are eligible
+    (minimise/maximise act on the focused window, merge merges Explorer).  The
+    pure-prefix verbs (open/close/move) are never fired early — that's what
+    caused stray hallucinated "open" commands."""
+    eligible = ("minimise", "maximise", "merge")
     out = {}
     for key, ms in (_WORD_DELAYS or {}).items():
+        if key not in eligible:
+            continue
         try:
             ms = int(ms)
         except (TypeError, ValueError):
