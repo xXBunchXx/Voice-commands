@@ -389,7 +389,7 @@ class SettingsWidget(tk.Frame):
         self._cmd_entries = {}
         self._cmd_delay_entries = {}
         groups = [
-            ("Media",       ["skip", "previous", "rewind", "play_pause", "mute"]),
+            ("Media",       ["skip", "previous", "rewind", "play_pause", "mute", "switch_audio"]),
             ("Keyboard",    ["copy", "paste", "save", "enter", "undo"]),
             ("App control", ["open", "close", "minimise", "maximise", "move", "merge"]),
             ("Engine",      ["diagnose", "stop_engine", "restart_engine"]),
