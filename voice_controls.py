@@ -20,7 +20,13 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from vosk import Model, KaldiRecognizer
 import user_config
 
-sys.stdout.reconfigure(encoding='utf-8')
+# In the --noconsole exe sys.stdout/stderr are None until the engine redirects
+# them, so guard this — otherwise importing the module (e.g. from the Listen
+# button before the engine has started) crashes with an AttributeError.
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except (AttributeError, ValueError):
+    pass
 # Make the process DPI-aware so all Win32 coordinate calls use physical pixels
 # consistently. Without this, SystemParametersInfoW, GetWindowRect and
 # SetWindowPos use virtualized logical pixels while DwmGetWindowAttribute
