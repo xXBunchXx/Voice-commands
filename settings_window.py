@@ -605,8 +605,9 @@ class SettingsWidget(tk.Frame):
                 row = tk.Frame(self._ctx_inner, bg=BG)
                 row.pack(fill="x", padx=2, pady=1)
 
-                cb = tk.Checkbutton(row, variable=var, bg=BG,
-                                    activebackground=BG, selectcolor=ENTRY_BG)
+                cb = tk.Checkbutton(row, variable=var, bg=BG, fg=FG,
+                                    activebackground=BG, activeforeground=FG,
+                                    selectcolor=ENTRY_BG)
                 cb.pack(side="left")
                 tk.Label(row, text=phrase, bg=BG, fg=FG,
                          font=("Segoe UI", 9), width=24, anchor="w").pack(side="left")
