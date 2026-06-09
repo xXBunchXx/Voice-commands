@@ -520,8 +520,10 @@ class SettingsWidget(tk.Frame):
         bot.pack(fill="x", padx=4, pady=(0, 4))
         _btn(bot, "🗑  Delete Selected", self._del_selected_ctx,
              color=RED).pack(side="left")
-        _btn(bot, "↺  Reset Defaults", self._reset_context_cmds,
+        _btn(bot, "↺  Clear", self._reset_context_cmds,
              color=MUTED).pack(side="right")
+
+        self._on_mode_change()
 
     def _reload_context_list(self):
         for w in self._ctx_inner.winfo_children():
