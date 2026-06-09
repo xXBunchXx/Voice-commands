@@ -1155,7 +1155,8 @@ def build_grammar(active_proc: str = "") -> str:
         _play_words = list(dict.fromkeys(_cw_all("play_pause") + ["play"]))
         for pw in _play_words:
             for app in APPS:
-                words.append(f"{pw} {_spoken(app)}")
+                for sp in _spoken_all(app):
+                    words.append(f"{pw} {sp}")
         for step in _VOLUME_STEPS:
             words.append(f"volume up {step}")
             words.append(f"volume down {step}")
