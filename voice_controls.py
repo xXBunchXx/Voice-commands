@@ -1171,38 +1171,45 @@ def build_grammar(active_proc: str = "") -> str:
             words.append(ow)
             words.append(f"{ow} all")
             for app in APPS:
-                words.append(f"{ow} {_spoken(app)}")
-                words.append(f"{ow} new {_spoken(app)}")
-                for pos in SNAP_POSITIONS:
-                    words.append(f"{ow} {_spoken(app)} {pos}")
+                for sp in _spoken_all(app):
+                    words.append(f"{ow} {sp}")
+                    words.append(f"{ow} new {sp}")
+                    for pos in SNAP_POSITIONS:
+                        words.append(f"{ow} {sp} {pos}")
         for mw in _cw_all("minimise"):
             words.append(mw)
             words.append(f"{mw} all")
             for app in APPS:
-                words.append(f"{mw} {_spoken(app)}")
+                for sp in _spoken_all(app):
+                    words.append(f"{mw} {sp}")
         for xw in _cw_all("maximise"):
             words.append(xw)
             for app in APPS:
-                words.append(f"{xw} {_spoken(app)}")
+                for sp in _spoken_all(app):
+                    words.append(f"{xw} {sp}")
         for cw in _cw_all("close"):
             words.append(cw)
             words.append(f"{cw} current")
             for app in APPS:
-                words.append(f"{cw} {_spoken(app)}")
+                for sp in _spoken_all(app):
+                    words.append(f"{cw} {sp}")
         for mvw in _cw_all("move"):
             for pos in SNAP_POSITIONS:
                 words.append(f"{mvw} {pos}")
             words.append(f"{mvw} to background")
             for app in APPS:
-                for pos in SNAP_POSITIONS:
-                    words.append(f"{mvw} {_spoken(app)} {pos}")
-                words.append(f"{mvw} {_spoken(app)} to background")
+                for sp in _spoken_all(app):
+                    for pos in SNAP_POSITIONS:
+                        words.append(f"{mvw} {sp} {pos}")
+                    words.append(f"{mvw} {sp} to background")
         for mgw in _cw_all("merge"):
             words.append(mgw)
             for app in APPS:
-                words.append(f"{mgw} {_spoken(app)}")
+                for sp in _spoken_all(app):
+                    words.append(f"{mgw} {sp}")
         for app in APPS:        # bare app names (deferred-verb completion)
-            words.append(_spoken(app))
+            for sp in _spoken_all(app):
+                words.append(sp)
 
     # ── Layouts group ─────────────────────────────────────────────────────
     if "layouts" in groups:
