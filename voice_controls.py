@@ -97,9 +97,16 @@ def set_active_mode(name: str) -> None:
     _status(f"Mode: {name.title()}")
 
 
+def _spoken_all(app: str) -> list[str]:
+    """Return every spoken alias for an app (comma-separated), or its display
+    name if none are set."""
+    raw = _SPOKEN_NAMES.get(app, "") or ""
+    aliases = [w.strip() for w in raw.split(",") if w.strip()]
+    return aliases or [app]
+
 def _spoken(app: str) -> str:
-    """Return the spoken alias for an app, falling back to its display name."""
-    return _SPOKEN_NAMES.get(app, app)
+    """Return the primary spoken alias for an app, falling back to its name."""
+    return _spoken_all(app)[0]
 
 def _cw_all(key: str) -> list[str]:
     """Return all trigger words for an action key (comma-separated aliases)."""
