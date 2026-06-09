@@ -493,6 +493,7 @@ class AppManagerWidget(tk.Frame):
         browse_row = tk.Frame(del_card, bg=CARD)
         browse_row.pack(fill="x", pady=(4, 0))
         self._btn(browse_row, "📂 Browse", self._browse_edit_exe, MUTED).pack(side="left")
+        self._btn(browse_row, "🎯 Detect", self._detect_proc_edit, MUTED).pack(side="left", padx=(8, 0))
         self._btn(browse_row, "💾  Save Changes", self._on_save_edit, GRN).pack(side="left", padx=(8, 0))
 
         # Rename row
