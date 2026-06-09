@@ -558,14 +558,16 @@ class SettingsWidget(tk.Frame):
             (0, 0), window=self._ctx_inner, anchor="nw")
         self._ctx_inner.bind(
             "<Configure>",
-            lambda e: self._ctx_canvas.configure(
-                scrollregion=self._ctx_canvas.bbox("all")))
+            lambda e: self._set_scrollregion(self._ctx_canvas))
         self._ctx_canvas.bind(
             "<Configure>",
             lambda e: self._ctx_canvas.itemconfig(_cwin, width=e.width))
 
         def _scroll(e):
-            self._ctx_canvas.yview_scroll(-1*(e.delta//120), "units")
+            bb = self._ctx_canvas.bbox("all")
+            if bb and bb[3] > self._ctx_canvas.winfo_height():
+                self._ctx_canvas.yview_scroll(-1*(e.delta//120), "units")
+        self._ctx_scroll = _scroll
         self._ctx_canvas.bind("<MouseWheel>", _scroll)
         self._ctx_inner.bind("<MouseWheel>", _scroll)
 
