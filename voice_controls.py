@@ -1287,7 +1287,7 @@ _APP_SETTLE_EXTRA = 0.12
 def _app_forms_set() -> set:
     """All spoken forms of the configured apps (used to tell which complete
     commands contain an app name, so they can be given longer to settle)."""
-    return {_spoken(a).lower() for a in APPS}
+    return {sp.lower() for a in APPS for sp in _spoken_all(a)}
 
 def _phrase_has_app(phrase: str, app_forms: set) -> bool:
     """True if any run of 1-3 words in *phrase* is an app name."""
