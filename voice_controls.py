@@ -84,6 +84,18 @@ def _active_context_commands() -> dict:
         return _CONTEXT_COMMANDS
     return _MODES.get(_ACTIVE_MODE, {}).get("commands", {})
 
+def set_active_mode(name: str) -> None:
+    """Switch the active mode.  The grammar watcher rebuilds the vocabulary to
+    match within ~1s (build_grammar depends on the active mode)."""
+    global _ACTIVE_MODE
+    name = (name or "").strip().lower()
+    if name not in _mode_names():
+        print(f"  No mode called '{name}'")
+        return
+    _ACTIVE_MODE = name
+    print(f"🎚  Mode → {name}")
+    _status(f"Mode: {name.title()}")
+
 
 def _spoken(app: str) -> str:
     """Return the spoken alias for an app, falling back to its display name."""
