@@ -1073,6 +1073,46 @@ class AppManagerWidget(tk.Frame):
         self.e_edit_path.delete(0, "end"); self.e_edit_path.insert(0, str(p))
         self.e_edit_proc.delete(0, "end"); self.e_edit_proc.insert(0, p.name)
 
+    def _detect_proc_edit(self):
+        """Capture the process name of whatever window the user focuses next.
+
+        Useful for Store / Start-menu apps (e.g. Claude) that were added via
+        shell:AppsFolder and therefore have no .exe process name on record."""
+        if not self.combo_var.get():
+            self._set_status("Pick an app from the list first.", RED)
+            return
+
+        secs = 5
+        self._set_status(
+            f"Switch to the app's window now — capturing in {secs}s …", AMBER)
+
+        def _tick(remaining):
+            if remaining > 0:
+                self._set_status(
+                    f"Switch to the app's window now — capturing in "
+                    f"{remaining}s …", AMBER)
+                self.after(1000, lambda: _tick(remaining - 1))
+                return
+            try:
+                import win32gui, win32process, psutil
+                hwnd = win32gui.GetForegroundWindow()
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                name = psutil.Process(pid).name()
+            except Exception as e:
+                self._set_status(f"Could not detect process: {e}", RED)
+                return
+            if not name or name.lower() in ("echo.exe", "python.exe", "pythonw.exe"):
+                self._set_status(
+                    "Detected this settings window — try again and focus the "
+                    "target app instead.", RED)
+                return
+            self.e_edit_proc.delete(0, "end")
+            self.e_edit_proc.insert(0, name)
+            self._set_status(
+                f'Detected "{name}".  Press 💾 Save Changes to keep it.', GRN)
+
+        self.after(1000, lambda: _tick(secs - 1))
+
     def _on_save_edit(self):
         """Save edited path, proc and spoken name for the selected entry."""
         name   = self.combo_var.get()
