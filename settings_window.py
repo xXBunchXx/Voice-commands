@@ -3,7 +3,7 @@ Settings widget — embeds directly in the main window as a tab (SettingsWidget)
 """
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import pathlib
 import user_config
 
