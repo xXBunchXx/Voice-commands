@@ -135,12 +135,20 @@ def _context_display_maps():
       - val_to_disp:    stored context value         -> label to display
     """
     proc_names = user_config.get_proc_names()          # {display: proc.exe}
-    val_to_disp = {pr: disp for disp, pr in proc_names.items() if pr}
-    disp_to_val = {disp: pr for disp, pr in proc_names.items() if pr}
-    display_values = list(_KNOWN_CONTEXTS)
-    display_values += sorted(user_config.get_custom_groups().keys())
-    for pr in sorted(set(proc_names.values())):
-        display_values.append(val_to_disp.get(pr, pr))
+    apps       = user_config.get_apps()                 # {display: target}
+
+    # Every known app shows up, whether or not it has a process name yet.
+    displays = set(apps.keys()) | set(proc_names.keys())
+    disp_to_val, val_to_disp = {}, {}
+    for disp in displays:
+        pr  = (proc_names.get(disp) or "").strip()
+        val = pr if pr else disp        # match by .exe if known, else by name
+        disp_to_val[disp] = val
+        val_to_disp[val]  = disp
+
+    display_values  = list(_KNOWN_CONTEXTS)
+    display_values += sorted(user_config.get_custom_groups().keys(), key=str.lower)
+    display_values += sorted(displays, key=str.lower)
     return display_values, disp_to_val, val_to_disp
 
 
