@@ -1023,6 +1023,16 @@ class AppManagerWidget(tk.Frame):
                             parent=self.winfo_toplevel())
         self._go_main()
 
+        # Store / Start-menu apps come in without a process name (needed for
+        # custom commands + window control).  Auto-detect those by launching
+        # them and reading their process.  Steam games are skipped — their
+        # steam://rungameid launcher isn't the game's own process.
+        need = [(name, r["path"]) for r, name in selected
+                if not (r.get("proc") or "").strip()
+                and not str(r.get("path", "")).lower().startswith("steam:")]
+        if need:
+            self.after(400, lambda: self._auto_detect_queue(need))
+
     # ── Main-page logic ───────────────────────────────────────────────────────
 
     def _reload(self):
