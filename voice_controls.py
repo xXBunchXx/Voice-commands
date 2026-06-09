@@ -64,6 +64,25 @@ _SPOKEN_TO_DISPLAY:  dict[str, str]             = {}   # spoken_name  → displa
 _WORD_DELAYS:        dict[str, int]             = {}   # command_key  → grace ms for bare verb
 _CONTEXT_DELAYS:     dict[str, int]             = {}   # custom-command phrase → speed ms
 _AUDIO_DEVICES:      dict[str, dict]            = {}   # spoken_name  → {"id":..., "name":...}
+_MODES:              dict[str, dict]            = {}   # user modes (default is implicit)
+_ACTIVE_MODE:        str                        = "default"   # current mode (runtime)
+
+
+def _mode_names() -> list:
+    return ["default"] + sorted(_MODES.keys())
+
+def _active_groups() -> set:
+    """Built-in command groups enabled in the current mode (default = all)."""
+    if _ACTIVE_MODE == "default":
+        return set(user_config.MODE_GROUPS)
+    g = _MODES.get(_ACTIVE_MODE, {}).get("groups", {})
+    return {k for k in user_config.MODE_GROUPS if g.get(k)}
+
+def _active_context_commands() -> dict:
+    """Custom commands active in the current mode."""
+    if _ACTIVE_MODE == "default":
+        return _CONTEXT_COMMANDS
+    return _MODES.get(_ACTIVE_MODE, {}).get("commands", {})
 
 
 def _spoken(app: str) -> str:
