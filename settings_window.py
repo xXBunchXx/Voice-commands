@@ -738,6 +738,115 @@ class SettingsWidget(tk.Frame):
         self._on_mode_change()
         self._flash(f'✓  Deleted mode "{name}".')
 
+    # ── Export / Import command files ──────────────────────────────────────────
+
+    def _export_cmds(self):
+        import json
+        all_cmds = self._mode_commands()
+
+        # If rows are ticked, export only those; otherwise export everything.
+        picked = {(p, c) for v, p, c in self._ctx_row_vars if v.get()}
+        commands: dict = {}
+        if picked:
+            for phrase, ctx in picked:
+                if phrase in all_cmds and ctx in all_cmds[phrase]:
+                    commands.setdefault(phrase, {})[ctx] = all_cmds[phrase][ctx]
+        else:
+            commands = {p: dict(c) for p, c in all_cmds.items()}
+
+        if not commands:
+            self._flash("Nothing to export.", RED)
+            return
+
+        # Carry along any custom-group definitions the commands reference,
+        # so the recipient gets the group membership too.
+        all_groups = user_config.get_custom_groups()
+        used_ctx = {c for ctxs in commands.values() for c in ctxs}
+        groups = {g: list(all_groups[g]) for g in used_ctx if g in all_groups}
+
+        payload = {
+            "echo_command_file": 1,
+            "source_mode": self._editing_mode,
+            "commands": commands,
+            "groups": groups,
+        }
+
+        default_name = (f"echo-{self._editing_mode}-commands.json"
+                        if self._editing_mode != "default"
+                        else "echo-commands.json")
+        path = filedialog.asksaveasfilename(
+            parent=self.winfo_toplevel(), title="Export commands",
+            defaultextension=".json", initialfile=default_name,
+            filetypes=[("Echo command file", "*.json"), ("All files", "*.*")])
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+        except Exception as e:
+            messagebox.showerror("Export failed", str(e),
+                                 parent=self.winfo_toplevel())
+            return
+        n = sum(len(c) for c in commands.values())
+        self._flash(f"✓  Exported {n} command(s).")
+
+    def _import_cmds(self):
+        import json
+        path = filedialog.askopenfilename(
+            parent=self.winfo_toplevel(), title="Import commands",
+            filetypes=[("Echo command file", "*.json"), ("All files", "*.*")])
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception as e:
+            messagebox.showerror("Import failed",
+                                 f"Could not read file:\n{e}",
+                                 parent=self.winfo_toplevel())
+            return
+
+        if not isinstance(payload, dict) or "commands" not in payload \
+                or not isinstance(payload["commands"], dict):
+            messagebox.showerror("Import failed",
+                                 "This is not a valid Echo command file.",
+                                 parent=self.winfo_toplevel())
+            return
+
+        new_cmds = payload["commands"]
+        n = sum(len(c) for c in new_cmds.values() if isinstance(c, dict))
+        if not messagebox.askyesno(
+                "Import commands?",
+                f'Import {n} command(s) into mode "{self._editing_mode}"?\n'
+                "Existing commands with the same phrase + context "
+                "will be overwritten.",
+                parent=self.winfo_toplevel()):
+            return
+
+        # Merge commands into the current mode.
+        cmds = self._mode_commands()
+        for phrase, ctxs in new_cmds.items():
+            if not isinstance(ctxs, dict):
+                continue
+            cmds.setdefault(phrase, {}).update(ctxs)
+        self._mode_set_commands(cmds)
+
+        # Merge any custom-group definitions that came with the file.
+        groups_in = payload.get("groups", {})
+        if isinstance(groups_in, dict) and groups_in:
+            groups = user_config.get_custom_groups()
+            for gname, procs in groups_in.items():
+                if not isinstance(procs, list):
+                    continue
+                existing = groups.setdefault(gname, [])
+                for p in procs:
+                    if p not in existing:
+                        existing.append(p)
+            user_config.set_custom_groups(groups)
+
+        self._reload_context_list()
+        self._flash(f"✓  Imported {n} command(s).")
+
     # ── Command editor overlay ────────────────────────────────────────────────
 
     def _show_cmd_editor(self, *, phrase="", context="browser",
