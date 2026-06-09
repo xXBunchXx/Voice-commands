@@ -100,12 +100,18 @@ DEFAULT_COMMAND_WORDS: dict[str, str] = {
     # Compound app commands
     "minimise_all":   "minimise all",
     "open_all":       "open all",
+    # Modes
+    "set_mode":       "set mode",
     # Engine
     "undo":           "undo",
     "diagnose":       "diagnose",
     "stop_engine":    "close echo",
     "restart_engine": "restart echo",
 }
+
+# Command groups that a non-default mode can enable/disable.  Engine commands and
+# "set mode" are always available so you can always switch back.
+MODE_GROUPS: tuple = ("media", "keyboard", "apps", "layouts", "audio")
 
 # Volume step words → percentage (integer 1-100)
 DEFAULT_VOLUME_STEPS: dict[str, int] = {
