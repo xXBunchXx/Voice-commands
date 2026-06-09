@@ -769,11 +769,11 @@ class SettingsWidget(tk.Frame):
             "groups": groups,
         }
 
-        default_name = (f"echo-{self._editing_mode}-commands.json"
-                        if self._editing_mode != "default"
-                        else "echo-commands.json")
+        safe = re.sub(r"[^\w.-]+", "-", context).strip("-") or "commands"
+        default_name = f"echo-{safe}-commands.json"
         path = filedialog.asksaveasfilename(
-            parent=self.winfo_toplevel(), title="Export commands",
+            parent=self.winfo_toplevel(),
+            title=f"Export commands for {label or context}",
             defaultextension=".json", initialfile=default_name,
             filetypes=[("Echo command file", "*.json"), ("All files", "*.*")])
         if not path:
