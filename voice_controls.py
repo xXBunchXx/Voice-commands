@@ -1685,7 +1685,12 @@ def run(stop_event: _threading.Event | None = None) -> bool:
     _CONTEXT_COMMANDS    = user_config.get_context_commands()
     _spoken_raw          = user_config.get_spoken_names()
     _SPOKEN_NAMES        = _spoken_raw
-    _SPOKEN_TO_DISPLAY   = {v: k for k, v in _spoken_raw.items() if v}
+    _SPOKEN_TO_DISPLAY   = {}
+    for _disp, _raw in _spoken_raw.items():
+        for _alias in (_raw or "").split(","):
+            _alias = _alias.strip()
+            if _alias:
+                _SPOKEN_TO_DISPLAY[_alias] = _disp
 
     if stop_event is None:
         stop_event = _threading.Event()
