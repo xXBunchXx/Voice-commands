@@ -943,6 +943,44 @@ class SettingsWidget(tk.Frame):
                      font=("Segoe UI", 8)).pack(anchor="w")
             widget_fn(f).pack(fill="x")
 
+        # ── Import a whole command file into the chosen app/group ──────────────
+        imp_bar = tk.Frame(body, bg=CARD)
+        imp_bar.pack(fill="x", pady=(0, 6))
+        imp_lbl = tk.Label(imp_bar, text="", bg=CARD, fg=AMBER,
+                           font=("Segoe UI", 8), justify="left", wraplength=380)
+
+        def _do_import_file():
+            import json
+            p = filedialog.askopenfilename(
+                parent=overlay, title="Import command file",
+                filetypes=[("Echo command file", "*.json"), ("All files", "*.*")])
+            if not p:
+                return
+            try:
+                with open(p, "r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+            except Exception as e:
+                messagebox.showerror("Import failed", str(e), parent=overlay)
+                return
+            cin = payload.get("commands") if isinstance(payload, dict) else None
+            if not isinstance(cin, dict) or not cin:
+                messagebox.showerror("Import failed",
+                                     "Not a valid Echo command file.", parent=overlay)
+                return
+            flat = {}
+            for ph, ctxs in cin.items():
+                if isinstance(ctxs, dict):
+                    for v in ctxs.values():
+                        flat[ph.strip().lower()] = v
+            imported["flat"] = flat
+            imp_lbl.config(
+                text=f"✓  {len(flat)} command(s) loaded — set the app/group "
+                     "below, then Save to add them all.")
+
+        _btn(imp_bar, "📥  Import file…", _do_import_file,
+             color=MUTED).pack(side="left")
+        imp_lbl.pack(side="left", padx=(8, 0))
+
         field_row("Voice phrase  (what you say)",
                   lambda f: tk.Entry(f, textvariable=phrase_var,
                                      bg=ENTRY_BG, fg=FG, insertbackground=FG,
