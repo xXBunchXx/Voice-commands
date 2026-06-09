@@ -463,6 +463,35 @@ class SettingsWidget(tk.Frame):
                 self._cmd_delay_entries[key] = dspin
 
         self._make_save_btn(inner, self._save_commands)
+        self._bind_wheel_tree(inner, canvas)
+
+    # ── Scroll helpers ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _set_scrollregion(canvas):
+        """Pin the scroll region's top to 0 so you can't scroll above the
+        first item into blank space."""
+        bb = canvas.bbox("all")
+        if bb:
+            canvas.configure(scrollregion=(0, 0, bb[2], bb[3]))
+
+    def _bind_wheel_tree(self, widget, canvas):
+        """Bind the mouse wheel on *widget* and all its descendants so the
+        wheel scrolls the canvas no matter which child is hovered."""
+        def _on_wheel(e):
+            bb = canvas.bbox("all")
+            if bb and bb[3] > canvas.winfo_height():
+                canvas.yview_scroll(-1 * (e.delta // 120), "units")
+            return "break"
+
+        def _bind(w):
+            try:
+                w.bind("<MouseWheel>", _on_wheel)
+            except Exception:
+                pass
+            for c in w.winfo_children():
+                _bind(c)
+        _bind(widget)
 
     def _save_commands(self):
         try:
