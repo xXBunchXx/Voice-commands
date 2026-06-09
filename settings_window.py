@@ -404,13 +404,10 @@ class SettingsWidget(tk.Frame):
         inner = tk.Frame(canvas, bg=BG)
         cwin = canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>",
-                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+                   lambda e: self._set_scrollregion(canvas))
         canvas.bind("<Configure>",
                     lambda e: canvas.itemconfig(cwin, width=e.width))
-        canvas.bind("<MouseWheel>",
-                    lambda e: canvas.yview_scroll(-1*(e.delta//120), "units"))
-        inner.bind("<MouseWheel>",
-                   lambda e: canvas.yview_scroll(-1*(e.delta//120), "units"))
+        self._cmd_canvas = canvas
 
         self._cmd_entries = {}
         self._cmd_delay_entries = {}
