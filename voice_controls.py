@@ -229,10 +229,11 @@ def _try_specific_context(text: str) -> bool:
     foreground app matches.  This runs BEFORE the built-in commands so it can
     override them — e.g. 'enter' does ctrl+enter inside Claude but the normal
     Enter key everywhere else.  'any' commands never override (handled later)."""
-    if text not in _CONTEXT_COMMANDS:
+    cmds = _active_context_commands()
+    if text not in cmds:
         return False
     proc    = _get_active_proc()
-    targets = _CONTEXT_COMMANDS[text]
+    targets = cmds[text]
     for context, action in targets.items():
         if context == "any":
             continue
