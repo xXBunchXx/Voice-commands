@@ -1376,6 +1376,16 @@ def handle_command(text: str) -> bool:
     last_command = text
     last_command_time = now
 
+    # ── Modes: "set mode film" ─────────────────────────────────────────────
+    for _smw in _cw_all("set_mode"):
+        if text.startswith(_smw + " "):
+            target = text[len(_smw) + 1:].strip()
+            if target in _mode_names():
+                set_active_mode(target)
+            else:
+                print(f"  No mode called '{target}'")
+            return False
+
     # App/group-specific custom command — overrides a built-in of the same name
     # (e.g. "enter" → ctrl+enter inside Claude).  "any" commands don't override.
     if _try_specific_context(text):
