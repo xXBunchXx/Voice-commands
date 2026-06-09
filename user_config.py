@@ -554,6 +554,7 @@ def _schema_defaults() -> dict:
         "COMMAND_WORDS":        DEFAULT_COMMAND_WORDS.copy(),
         "VOLUME_STEPS":         DEFAULT_VOLUME_STEPS.copy(),
         "CONTEXT_COMMANDS":     {},   # empty = use all defaults
+        "MODES":                {},   # {mode_name: {"groups":{}, "commands":{}}}
         "SCAN_FOLDERS":         [],
         "CUSTOM_GROUPS":        {},   # {group_name: [proc_name, ...]}
         "SPOKEN_NAMES":         {},   # {display_name: spoken_name}
