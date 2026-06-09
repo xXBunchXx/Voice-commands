@@ -623,24 +623,113 @@ class SettingsWidget(tk.Frame):
         if not to_del:
             self._flash("Select rows to delete first.", GRN)
             return
-        cmds = user_config.get_context_commands()
+        cmds = self._mode_commands()
         for phrase, context in to_del:
             if phrase in cmds and context in cmds[phrase]:
                 del cmds[phrase][context]
                 if not cmds[phrase]:
                     del cmds[phrase]
-        user_config.set_context_commands(cmds)
+        self._mode_set_commands(cmds)
         self._reload_context_list()
         self._flash(f"✓  Deleted {len(to_del)} rule(s).")
 
     def _reset_context_cmds(self):
         if messagebox.askyesno("Reset?",
-                               "Reset context commands to defaults?\n"
+                               "Clear all custom commands for this mode?\n"
                                "Your custom additions will be lost.",
                                parent=self.winfo_toplevel()):
-            user_config.set_context_commands({})
+            self._mode_set_commands({})
             self._reload_context_list()
-            self._flash("✓  Reset to defaults.")
+            self._flash("✓  Cleared.")
+
+    # ── Mode helpers ───────────────────────────────────────────────────────────
+
+    def _mode_commands(self):
+        if self._editing_mode == "default":
+            return user_config.get_context_commands()
+        return user_config.get_mode(self._editing_mode).get("commands", {})
+
+    def _mode_set_commands(self, cmds):
+        if self._editing_mode == "default":
+            user_config.set_context_commands(cmds)
+        else:
+            groups = {g: v.get() for g, v in self._mode_group_vars.items()}
+            if not groups:
+                groups = user_config.get_mode(self._editing_mode).get("groups", {})
+            user_config.save_mode(self._editing_mode, groups, cmds)
+
+    def _on_mode_change(self):
+        self._editing_mode = self._mode_var.get()
+        self._reload_mode_groups()
+        self._reload_context_list()
+
+    def _reload_mode_groups(self):
+        for w in self._mode_groups_frame.winfo_children():
+            w.destroy()
+        self._mode_group_vars = {}
+        if self._editing_mode == "default":
+            self._mode_groups_frame.pack_forget()
+            return
+        self._mode_groups_frame.pack(fill="x", padx=4, pady=(2, 0),
+                                     after=self._mode_combo.master)
+        md = user_config.get_mode(self._editing_mode)
+        tk.Label(self._mode_groups_frame,
+                 text="Built-in commands enabled in this mode:",
+                 bg=CARD, fg=FG, font=("Segoe UI Semibold", 9)).pack(anchor="w")
+        row = tk.Frame(self._mode_groups_frame, bg=CARD)
+        row.pack(anchor="w", pady=(4, 0))
+        _labels = {"media": "🎵 Media", "keyboard": "⌨ Keyboard",
+                   "apps": "🪟 Apps/Windows", "layouts": "🗔 Layouts",
+                   "audio": "🔊 Audio out"}
+        for g in user_config.MODE_GROUPS:
+            var = tk.BooleanVar(value=bool(md.get("groups", {}).get(g, False)))
+            cb = tk.Checkbutton(row, text=_labels.get(g, g), variable=var,
+                                bg=CARD, fg=FG, selectcolor=ENTRY_BG,
+                                activebackground=CARD, activeforeground=FG,
+                                font=("Segoe UI", 9),
+                                command=self._save_mode_groups)
+            cb.pack(side="left", padx=(0, 10))
+            self._mode_group_vars[g] = var
+
+    def _save_mode_groups(self):
+        if self._editing_mode == "default":
+            return
+        groups = {g: v.get() for g, v in self._mode_group_vars.items()}
+        cmds = user_config.get_mode(self._editing_mode).get("commands", {})
+        user_config.save_mode(self._editing_mode, groups, cmds)
+
+    def _new_mode(self):
+        name = simpledialog.askstring(
+            "New Mode", "Name for the new mode (e.g. film):",
+            parent=self.winfo_toplevel())
+        if not name:
+            return
+        name = name.strip().lower()
+        if name == "default" or name in user_config.get_modes():
+            self._flash("That mode name is taken.", RED)
+            return
+        if not name:
+            return
+        user_config.save_mode(name, {g: False for g in user_config.MODE_GROUPS}, {})
+        self._mode_combo["values"] = user_config.mode_names()
+        self._mode_var.set(name)
+        self._on_mode_change()
+        self._flash(f'✓  Created mode "{name}".')
+
+    def _delete_mode(self):
+        if self._editing_mode == "default":
+            self._flash("The default mode cannot be deleted.", RED)
+            return
+        name = self._editing_mode
+        if not messagebox.askyesno(
+                "Delete mode?", f'Delete mode "{name}" and its commands?',
+                parent=self.winfo_toplevel()):
+            return
+        user_config.delete_mode(name)
+        self._mode_combo["values"] = user_config.mode_names()
+        self._mode_var.set("default")
+        self._on_mode_change()
+        self._flash(f'✓  Deleted mode "{name}".')
 
     # ── Command editor overlay ────────────────────────────────────────────────
 
